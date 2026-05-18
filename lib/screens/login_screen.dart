@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:milzip/screens/auth/email_login_screen.dart'; // 로그인 화면
 import 'package:milzip/screens/auth/signup_email.dart'; // 회원가입 화면
+import 'package:flutter/gestures.dart'; // ← 회원가입 밑줄 생성 코드
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -61,7 +62,7 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                '카카오',
+                '카카오 계정으로 로그인하기',
                 style: TextStyle(fontSize: 14, color: Colors.black87),
               ),
               const SizedBox(height: 40),
@@ -118,29 +119,35 @@ class LoginScreen extends StatelessWidget {
               const SizedBox(height: 16),
               // 회원가입 링크
               // 회원가입 링크
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SignupEmailScreen(),
-                    ),
-                  );
-                },
-                child: RichText(
-                  text: const TextSpan(
-                    style: TextStyle(fontSize: 14, color: Color(0xFFADB5BD)),
-                    children: [
-                      TextSpan(text: '계정이 없으신가요? '),
-                      TextSpan(
-                        text: '회원가입하기',
-                        style: TextStyle(
-                          color: Color(0xFF495057),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+              // 회원가입 링크
+              RichText(
+                text: TextSpan(
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFFADB5BD),
                   ),
+                  children: [
+                    const TextSpan(text: '계정이 없으신가요? '),
+                    TextSpan(
+                      text: '회원가입하기',
+                      style: const TextStyle(
+                        color: Color(0xFF495057),
+                        fontWeight: FontWeight.w500,
+                        decoration: TextDecoration.underline, // 밑줄 추가
+                        decorationColor: Color(0xFF495057), // 밑줄 색상
+                      ),
+                      // "회원가입하기" 글자만 클릭 가능
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SignupEmailScreen(),
+                            ),
+                          );
+                        },
+                    ),
+                  ],
                 ),
               ),
               const Spacer(flex: 3),

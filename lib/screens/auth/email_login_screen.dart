@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart'; // ← 추가
+import 'package:milzip/screens/auth/signup_email.dart'; // 회원가입 창
+import 'package:milzip/screens/home.dart'; // 메인화면 창
 
 class EmailLoginScreen extends StatefulWidget {
   const EmailLoginScreen({super.key});
@@ -37,8 +40,11 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
 
   void _handleLogin() {
     // TODO: 실제 로그인 API 연동
-    print('이메일: ${_emailController.text}');
-    print('비밀번호: ${_passwordController.text}');
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+      (route) => false, // 모든 이전 화면 제거
+    );
   }
 
   // 공통 입력 필드 스타일 (피그마 스펙 반영)
@@ -127,21 +133,33 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
             ),
             const SizedBox(height: 20),
             // 회원가입 링크 (두 부분으로 나눠서 스타일 다르게)
-            GestureDetector(
-              onTap: () {
-                // TODO: 회원가입 화면으로 이동
-              },
+            Center(
               child: RichText(
-                text: const TextSpan(
-                  style: TextStyle(fontSize: 13, color: Color(0xFFADB5BD)),
+                text: TextSpan(
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFADB5BD),
+                  ),
                   children: [
-                    TextSpan(text: '계정이 없으신가요? '),
+                    const TextSpan(text: '계정이 없으신가요? '),
                     TextSpan(
                       text: '회원가입하기',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Color(0xFF495057),
                         fontWeight: FontWeight.w500,
+                        decoration: TextDecoration.underline, // 밑줄 추가
+                        decorationColor: Color(0xFF495057), // 밑줄 색상
                       ),
+                      // "회원가입하기" 글자만 클릭 가능하게
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SignupEmailScreen(),
+                            ),
+                          );
+                        },
                     ),
                   ],
                 ),

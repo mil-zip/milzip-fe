@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart'; // ← 추가
 import 'package:milzip/screens/auth/signup_email.dart'; // 회원가입 창
+import 'package:milzip/screens/home.dart'; // 메인화면 창
 
 class EmailLoginScreen extends StatefulWidget {
   const EmailLoginScreen({super.key});
@@ -39,8 +40,11 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
 
   void _handleLogin() {
     // TODO: 실제 로그인 API 연동
-    print('이메일: ${_emailController.text}');
-    print('비밀번호: ${_passwordController.text}');
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+      (route) => false, // 모든 이전 화면 제거
+    );
   }
 
   // 공통 입력 필드 스타일 (피그마 스펙 반영)

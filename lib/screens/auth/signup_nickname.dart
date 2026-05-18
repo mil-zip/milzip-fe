@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:milzip/screens/auth/signup_complete.dart';
+import 'dart:typed_data'; // ← 추가 (Uint8List 사용을 위해)
 
 class SignupNicknameScreen extends StatefulWidget {
   final String email;
@@ -20,6 +22,10 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
   final TextEditingController _nicknameController = TextEditingController();
   bool _isButtonEnabled = false;
 
+  // 선택된 프로필 사진 (null이면 사진 없음)
+  // 변경: 바이트 데이터로 저장 (웹/모바일 둘 다 호환)
+  Uint8List? _profileImageBytes;
+
   @override
   void initState() {
     super.initState();
@@ -34,11 +40,33 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
 
   void _updateButtonState() {
     setState(() {
-      // 한 글자라도 입력하면 버튼 활성화
       _isButtonEnabled = _nicknameController.text.trim().isNotEmpty;
     });
   }
 
+  // 갤러리에서 사진 선택
+  // 변경: 바이트로 읽어서 저장
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (image != null) {
+        // 이미지를 바이트로 읽기 (웹/모바일 둘 다 동작)
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _profileImageBytes = bytes;
+        });
+      }
+    } catch (e) {
+      print('이미지 선택 에러: $e');
+    }
+  }
+
+  // 변경: 바이트 데이터 전달
   void _handleConfirm() {
     Navigator.push(
       context,
@@ -46,6 +74,7 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
         builder: (context) => SignupCompleteScreen(
           email: widget.email,
           nickname: _nicknameController.text,
+          profileImageBytes: _profileImageBytes,
         ),
       ),
     );
@@ -53,7 +82,6 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 현재 입력한 글자 수
     final currentLength = _nicknameController.text.length;
 
     return Scaffold(
@@ -82,7 +110,6 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 24),
-            // 안내 문구
             const Text(
               '밀집계정 프로필을\n설정해 주세요.',
               style: TextStyle(
@@ -93,7 +120,7 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            // 닉네임 라벨 + 글자수 카운터
+            // 닉네임 라벨 + 글자수
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -114,7 +141,6 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
             // 닉네임 입력
             TextField(
               controller: _nicknameController,
-              // maxLength 제거하고 inputFormatters 사용
               inputFormatters: [LengthLimitingTextInputFormatter(20)],
               decoration: InputDecoration(
                 hintText: '닉네임 입력',
@@ -144,7 +170,63 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+            // 프로필 사진 라벨
+            const Text(
+              '프로필 사진 (선택)',
+              style: TextStyle(fontSize: 13, color: Color(0xFFADB5BD)),
+            ),
+            const SizedBox(height: 12),
+            // 프로필 사진 영역 (가운데 정렬)
+            Center(
+              child: GestureDetector(
+                onTap: _pickImage,
+                child: SizedBox(
+                  width: 90,
+                  height: 90,
+                  child: Stack(
+                    children: [
+                      // 프로필 원형
+                      Container(
+                        width: 90,
+                        height: 90,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE9ECEF),
+                          shape: BoxShape.circle,
+                          // 사진이 있으면 이미지로 채우기
+                          // 변경: 바이트 데이터를 MemoryImage로 표시
+                          image: _profileImageBytes != null
+                              ? DecorationImage(
+                                  image: MemoryImage(_profileImageBytes!),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                      ),
+                      // 카메라 아이콘 (우측 하단)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFADB5BD),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
             // 확인 버튼
             SizedBox(
               width: double.infinity,

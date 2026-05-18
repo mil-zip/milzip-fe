@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart'; // ← 추가
 import 'package:milzip/screens/auth/signup_email.dart'; // 회원가입 창
-import 'package:milzip/screens/home.dart'; // 메인화면 창
+import 'package:milzip/screens/bottom_navigator.dart'; // 메인화면 창
 
 class EmailLoginScreen extends StatefulWidget {
   const EmailLoginScreen({super.key});

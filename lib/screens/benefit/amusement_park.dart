@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../models/theme_park.dart';
+import '../../data/theme_park_dummydata.dart';
 
-// ─── 데이터 모델 ───────────────────────────────────────────────────────────────
+// ─── 카테고리 모델 ─────────────────────────────────────────────────────────────
 
 class BenefitCategory {
   final String label;
@@ -8,59 +10,10 @@ class BenefitCategory {
   const BenefitCategory({required this.label, required this.icon});
 }
 
-class BenefitCard {
-  final String name;
-  final String region;
-  final String location;
-  final String discountRate;
-  final Color cardColor;
-  final List<String> tags;
-  bool isBookmarked;
-
-  BenefitCard({
-    required this.name,
-    required this.region,
-    required this.location,
-    required this.discountRate,
-    required this.cardColor,
-    required this.tags,
-    this.isBookmarked = false,
-  });
-}
-
-// ─── 샘플 데이터 ───────────────────────────────────────────────────────────────
-
 final List<BenefitCategory> categories = [
   BenefitCategory(label: '영화', icon: Icons.movie_outlined),
   BenefitCategory(label: '놀이공원', icon: Icons.attractions_outlined),
   BenefitCategory(label: '자기계발', icon: Icons.menu_book_outlined),
-];
-
-final List<BenefitCard> amusementParkCards = [
-  BenefitCard(
-    name: '에버랜드',
-    region: '수도권',
-    location: '경기 용인 / 연중무휴',
-    discountRate: '100%',
-    cardColor: const Color(0xFFD0312D),
-    tags: ['자유이용권', '현장구매'],
-  ),
-  BenefitCard(
-    name: '롯데월드',
-    region: '수도권',
-    location: '서울 잠실 / 연중무휴',
-    discountRate: '30,000원 할인',
-    cardColor: const Color(0xFF1A3A8F),
-    tags: ['자유이용권', '현장구매'],
-  ),
-  BenefitCard(
-    name: '서울랜드',
-    region: '경기도권',
-    location: '경기도 과천 / 연중무휴',
-    discountRate: '70%',
-    cardColor: const Color(0xFF2E7D32),
-    tags: ['자유이용권', '현장구매'],
-  ),
 ];
 
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
@@ -75,6 +28,14 @@ class BenefitCollectionScreen extends StatefulWidget {
 
 class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
   int _selectedCategoryIndex = 1; // 놀이공원 기본 선택
+  late List<ThemePark> _themeParks;
+
+  @override
+  void initState() {
+    super.initState();
+    // 더미 데이터 로드 - 나중에 API 호출로 교체
+    _themeParks = getDummyThemeParks();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,10 +67,18 @@ class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
                     setState(() => _selectedCategoryIndex = index),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-              // ── 가로 스와이프 카드
-              _BenefitCardSlider(cards: amusementParkCards),
+              // ── 캐러셀
+              _ThemeParkCarousel(
+                themeParks: _themeParks,
+                onBookmarkToggle: (id) {
+                  setState(() {
+                    final park = _themeParks.firstWhere((p) => p.id == id);
+                    park.isBookmarked = !park.isBookmarked;
+                  });
+                },
+              ),
 
               const SizedBox(height: 28),
 
@@ -159,7 +128,7 @@ class _CategoryTabs extends StatelessWidget {
                 margin: const EdgeInsets.symmetric(horizontal: 4),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.white : Colors.white,
+                  color: Colors.white,
                   border: Border.all(
                     color: isSelected
                         ? const Color(0xFF1A3A8F)
@@ -202,194 +171,339 @@ class _CategoryTabs extends StatelessWidget {
   }
 }
 
-// ─── 가로 스와이프 카드 슬라이더 ────────────────────────────────────────────────
+// ─── 캐러셀 ────────────────────────────────────────────────────────────────────
 
-class _BenefitCardSlider extends StatefulWidget {
-  final List<BenefitCard> cards;
-  const _BenefitCardSlider({required this.cards});
+class _ThemeParkCarousel extends StatefulWidget {
+  final List<ThemePark> themeParks;
+  final ValueChanged<int> onBookmarkToggle;
+
+  const _ThemeParkCarousel({
+    required this.themeParks,
+    required this.onBookmarkToggle,
+  });
 
   @override
-  State<_BenefitCardSlider> createState() => _BenefitCardSliderState();
+  State<_ThemeParkCarousel> createState() => _ThemeParkCarouselState();
 }
 
-class _BenefitCardSliderState extends State<_BenefitCardSlider> {
+class _ThemeParkCarouselState extends State<_ThemeParkCarousel> {
+  late final PageController _pageController;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // viewportFraction: 양옆 카드가 살짝 보이게 만드는 핵심 설정
+    _pageController = PageController(viewportFraction: 0.85);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 200,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: widget.cards.length,
-        itemBuilder: (context, index) {
-          final card = widget.cards[index];
-          // return _BenefitCardItem(
-          //   card: card,
-          //   onBookmarkToggle: () {
-          //     setState(() => card.isBookmarked = !card.isBookmarked);
+    return Column(
+      children: [
+        SizedBox(
+          height: 360,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: widget.themeParks.length,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            itemBuilder: (context, index) {
+              final park = widget.themeParks[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: _ThemeParkCard(
+                  park: park,
+                  onBookmarkToggle: () {
+                    widget.onBookmarkToggle(park.id);
 
-          //     // 북마크 토글 시 스낵바 알림
-          //     ScaffoldMessenger.of(context).clearSnackBars();
-          //     ScaffoldMessenger.of(context).showSnackBar(
-          //       SnackBar(
-          //         content: Text(
-          //           card.isBookmarked
-          //               ? '${card.name}이(가) 저장되었습니다 🔖'
-          //               : '${card.name} 저장이 취소되었습니다',
-          //         ),
-          //         duration: const Duration(seconds: 1),
-          //         behavior: SnackBarBehavior.floating,
-          //         shape: RoundedRectangleBorder(
-          //           borderRadius: BorderRadius.circular(10),
-          //         ),
-          //         margin: const EdgeInsets.symmetric(
-          //           horizontal: 20,
-          //           vertical: 10,
-          //         ),
-          //       ),
-          //     );
-          //   },
-          // );
-        },
-      ),
+                    // 북마크 토글 후의 상태에 맞춰 메시지 표시
+                    // (onBookmarkToggle 호출 후 park.isBookmarked가 이미 바뀐 상태)
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          park.isBookmarked
+                              ? '${park.name}이(가) 저장되었습니다!'
+                              : '${park.name} 저장이 취소되었습니다.',
+                        ),
+                        duration: const Duration(seconds: 1),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── 페이지 인디케이터 (점)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(widget.themeParks.length, (index) {
+            final isActive = index == _currentPage;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: isActive ? 20 : 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: isActive
+                    ? const Color(0xFF1A3A8F)
+                    : const Color(0xFFD0D0D0),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        ),
+      ],
     );
   }
 }
 
-// ─── 개별 혜택 카드 ────────────────────────────────────────────────────────────
+// ─── 개별 캐러셀 카드 ──────────────────────────────────────────────────────────
 
-class _BenefitCardItem extends StatelessWidget {
-  final BenefitCard card;
+class _ThemeParkCard extends StatelessWidget {
+  final ThemePark park;
   final VoidCallback onBookmarkToggle;
 
-  const _BenefitCardItem({required this.card, required this.onBookmarkToggle});
+  const _ThemeParkCard({required this.park, required this.onBookmarkToggle});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 175,
-      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── 컬러 카드 영역
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: card.cardColor,
-                borderRadius: BorderRadius.circular(14),
+          // ── 컬러 상단부
+          Container(
+            decoration: BoxDecoration(
+              color: park.cardColor,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
               ),
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 지역 뱃지 + 할인율
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
+            ),
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 지역 뱃지 + 할인 라벨
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Text(
+                        park.region,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        park.discountLabel,
+                        style: TextStyle(
+                          color: park.cardColor,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 50),
+
+                // 이름 + 북마크
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        park.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: onBookmarkToggle,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(6),
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
                         ),
-                        child: Text(
-                          card.region,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        card.discountRate,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const Spacer(),
-
-                  // 브랜드명 + 북마크
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        card.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      // ── 북마크 버튼
-                      GestureDetector(
-                        onTap: onBookmarkToggle,
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 200),
                           transitionBuilder: (child, anim) =>
                               ScaleTransition(scale: anim, child: child),
                           child: Icon(
-                            card.isBookmarked
+                            park.isBookmarked
                                 ? Icons.bookmark
                                 : Icons.bookmark_border,
-                            key: ValueKey(card.isBookmarked),
+                            key: ValueKey(park.isBookmarked),
                             color: Colors.white,
                             size: 22,
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
 
-          const SizedBox(height: 8),
-
-          // ── 위치/시간 정보
-          Text(
-            card.location,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF666666)),
-          ),
-
-          const SizedBox(height: 6),
-
-          // ── 태그들
-          Wrap(
-            spacing: 6,
-            children: card.tags
-                .map(
-                  (tag) => Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
+          // ── 정보 영역 (하단)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 위치 + 운영
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.place_outlined,
+                      size: 15,
+                      color: Color(0xFF888888),
                     ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0F0F0),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      tag,
+                    const SizedBox(width: 4),
+                    Text(
+                      '${park.shortAddress} · ${park.validUntilLabel}',
                       style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF555555),
+                        fontSize: 12,
+                        color: Color(0xFF666666),
                       ),
                     ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // 혜택 내용
+                Text(
+                  park.benefit,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF1A1A1A),
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
                   ),
-                )
-                .toList(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+
+                const SizedBox(height: 12),
+
+                // 가격 정보
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      park.discountType == DiscountType.free
+                          ? '무료'
+                          : '${park.formatPrice(park.discountedPrice)}원',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${park.formatPrice(park.originalPrice)}원',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFAAAAAA),
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                  ],
+                ),
+
+                // 필요 서류
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.assignment_outlined,
+                        size: 14,
+                        color: Color(0xFF555555),
+                      ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          park.requiredDocument,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF555555),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -441,7 +555,6 @@ class _DiscountConditionSection extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          // 번호 원
                           Container(
                             width: 28,
                             height: 28,

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:milzip/screens/auth/email_login_screen.dart'; // 로그인 화면
-import 'package:milzip/screens/auth/signup_email.dart'; // 회원가입 화면
-import 'package:flutter/gestures.dart'; // ← 회원가입 밑줄 생성 코드
+import 'package:milzip/screens/auth/email_login_screen.dart';
+import 'package:milzip/screens/auth/signup_email.dart';
+import 'package:milzip/screens/home.dart';
+import 'package:flutter/gestures.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -99,7 +100,11 @@ class LoginScreen extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    // TODO: 메인 화면으로 이동 (게스트 모드)
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const HomeScreen()),
+                      (route) => false,
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFF1F3F5),

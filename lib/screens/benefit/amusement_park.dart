@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 import '../../models/theme_park.dart';
-import '../../data/theme_park_dummydata.dart';
-
-// ─── 카테고리 모델 ─────────────────────────────────────────────────────────────
+import '../../data/theme_park_dummy.dart';
+import 'movie.dart';
+import 'self_development.dart';
 
 class BenefitCategory {
   final String label;
   final IconData icon;
+
   const BenefitCategory({required this.label, required this.icon});
 }
 
 final List<BenefitCategory> categories = [
   BenefitCategory(label: '영화', icon: Icons.movie_outlined),
   BenefitCategory(label: '놀이공원', icon: Icons.attractions_outlined),
-  BenefitCategory(label: '자기계발', icon: Icons.menu_book_outlined),
+  BenefitCategory(label: '자기개발', icon: Icons.menu_book_outlined),
 ];
-
-// ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
 class BenefitCollectionScreen extends StatefulWidget {
   const BenefitCollectionScreen({super.key});
@@ -27,13 +26,12 @@ class BenefitCollectionScreen extends StatefulWidget {
 }
 
 class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
-  int _selectedCategoryIndex = 1; // 놀이공원 기본 선택
+  int _selectedCategoryIndex = 1;
   late List<ThemePark> _themeParks;
 
   @override
   void initState() {
     super.initState();
-    // 더미 데이터 로드 - 나중에 API 호출로 교체
     _themeParks = getDummyThemeParks();
   }
 
@@ -46,7 +44,6 @@ class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── 상단 헤더
               const Padding(
                 padding: EdgeInsets.fromLTRB(20, 20, 20, 16),
                 child: Text(
@@ -59,38 +56,38 @@ class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
                 ),
               ),
 
-              // ── 카테고리 탭
               _CategoryTabs(
                 categories: categories,
                 selectedIndex: _selectedCategoryIndex,
-                onTap: (index) =>
-                    setState(() => _selectedCategoryIndex = index),
-              ),
-
-              const SizedBox(height: 20),
-
-              // ── 캐러셀
-              _ThemeParkCarousel(
-                themeParks: _themeParks,
-                onBookmarkToggle: (id) {
+                onTap: (index) {
                   setState(() {
-                    final park = _themeParks.firstWhere((p) => p.id == id);
-                    park.isBookmarked = !park.isBookmarked;
+                    _selectedCategoryIndex = index;
                   });
                 },
               ),
 
-              const SizedBox(height: 28),
-
-              // ── 할인 이용 조건
-              const _DiscountConditionSection(),
-
               const SizedBox(height: 20),
 
-              // ── 유의사항
-              const _NoticeSection(),
-
-              const SizedBox(height: 24),
+              if (_selectedCategoryIndex == 0) ...[
+                const MovieSection(),
+              ] else if (_selectedCategoryIndex == 1) ...[
+                _ThemeParkCarousel(
+                  themeParks: _themeParks,
+                  onBookmarkToggle: (id) {
+                    setState(() {
+                      final park = _themeParks.firstWhere((p) => p.id == id);
+                      park.isBookmarked = !park.isBookmarked;
+                    });
+                  },
+                ),
+                const SizedBox(height: 28),
+                const _DiscountConditionSection(),
+                const SizedBox(height: 20),
+                const _NoticeSection(),
+                const SizedBox(height: 24),
+              ] else ...[
+                const SelfDevelopmentSection(),
+              ],
             ],
           ),
         ),
@@ -98,8 +95,6 @@ class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
     );
   }
 }
-
-// ─── 카테고리 탭 ───────────────────────────────────────────────────────────────
 
 class _CategoryTabs extends StatelessWidget {
   final List<BenefitCategory> categories;
@@ -120,6 +115,7 @@ class _CategoryTabs extends StatelessWidget {
         children: List.generate(categories.length, (index) {
           final cat = categories[index];
           final isSelected = index == selectedIndex;
+
           return Expanded(
             child: GestureDetector(
               onTap: () => onTap(index),
@@ -171,8 +167,6 @@ class _CategoryTabs extends StatelessWidget {
   }
 }
 
-// ─── 캐러셀 ────────────────────────────────────────────────────────────────────
-
 class _ThemeParkCarousel extends StatefulWidget {
   final List<ThemePark> themeParks;
   final ValueChanged<int> onBookmarkToggle;
@@ -193,7 +187,6 @@ class _ThemeParkCarouselState extends State<_ThemeParkCarousel> {
   @override
   void initState() {
     super.initState();
-    // viewportFraction: 양옆 카드가 살짝 보이게 만드는 핵심 설정
     _pageController = PageController(viewportFraction: 0.85);
   }
 
@@ -212,9 +205,14 @@ class _ThemeParkCarouselState extends State<_ThemeParkCarousel> {
           child: PageView.builder(
             controller: _pageController,
             itemCount: widget.themeParks.length,
-            onPageChanged: (index) => setState(() => _currentPage = index),
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index;
+              });
+            },
             itemBuilder: (context, index) {
               final park = widget.themeParks[index];
+
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: _ThemeParkCard(
@@ -222,8 +220,6 @@ class _ThemeParkCarouselState extends State<_ThemeParkCarousel> {
                   onBookmarkToggle: () {
                     widget.onBookmarkToggle(park.id);
 
-                    // 북마크 토글 후의 상태에 맞춰 메시지 표시
-                    // (onBookmarkToggle 호출 후 park.isBookmarked가 이미 바뀐 상태)
                     ScaffoldMessenger.of(context).clearSnackBars();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -252,11 +248,11 @@ class _ThemeParkCarouselState extends State<_ThemeParkCarousel> {
 
         const SizedBox(height: 16),
 
-        // ── 페이지 인디케이터 (점)
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(widget.themeParks.length, (index) {
             final isActive = index == _currentPage;
+
             return AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -275,8 +271,6 @@ class _ThemeParkCarouselState extends State<_ThemeParkCarousel> {
     );
   }
 }
-
-// ─── 개별 캐러셀 카드 ──────────────────────────────────────────────────────────
 
 class _ThemeParkCard extends StatelessWidget {
   final ThemePark park;
@@ -301,7 +295,6 @@ class _ThemeParkCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── 컬러 상단부
           Container(
             decoration: BoxDecoration(
               color: park.cardColor,
@@ -313,7 +306,6 @@ class _ThemeParkCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 지역 뱃지 + 할인 라벨
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -358,7 +350,6 @@ class _ThemeParkCard extends StatelessWidget {
 
                 const SizedBox(height: 50),
 
-                // 이름 + 북마크
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -402,13 +393,11 @@ class _ThemeParkCard extends StatelessWidget {
             ),
           ),
 
-          // ── 정보 영역 (하단)
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 위치 + 운영
                 Row(
                   children: [
                     const Icon(
@@ -429,7 +418,6 @@ class _ThemeParkCard extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                // 혜택 내용
                 Text(
                   park.benefit,
                   style: const TextStyle(
@@ -444,7 +432,6 @@ class _ThemeParkCard extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                // 가격 정보
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -470,7 +457,8 @@ class _ThemeParkCard extends StatelessWidget {
                   ],
                 ),
 
-                // 필요 서류
+                const SizedBox(height: 12),
+
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -511,8 +499,6 @@ class _ThemeParkCard extends StatelessWidget {
   }
 }
 
-// ─── 할인 이용 조건 섹션 ────────────────────────────────────────────────────────
-
 class _DiscountConditionSection extends StatelessWidget {
   const _DiscountConditionSection();
 
@@ -537,7 +523,9 @@ class _DiscountConditionSection extends StatelessWidget {
               color: Color(0xFF1A1A1A),
             ),
           ),
+
           const SizedBox(height: 14),
+
           Container(
             decoration: BoxDecoration(
               border: Border.all(color: const Color(0xFFE5E5E5)),
@@ -545,7 +533,8 @@ class _DiscountConditionSection extends StatelessWidget {
             ),
             child: Column(
               children: List.generate(conditions.length, (index) {
-                final c = conditions[index];
+                final condition = conditions[index];
+
                 return Column(
                   children: [
                     Padding(
@@ -572,12 +561,14 @@ class _DiscountConditionSection extends StatelessWidget {
                               ),
                             ),
                           ),
+
                           const SizedBox(width: 14),
+
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                c.title,
+                                condition.title,
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
@@ -586,7 +577,7 @@ class _DiscountConditionSection extends StatelessWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                c.subtitle,
+                                condition.subtitle,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: Color(0xFF888888),
@@ -614,8 +605,6 @@ class _DiscountConditionSection extends StatelessWidget {
     );
   }
 }
-
-// ─── 유의사항 섹션 ─────────────────────────────────────────────────────────────
 
 class _NoticeSection extends StatelessWidget {
   const _NoticeSection();
@@ -647,7 +636,9 @@ class _NoticeSection extends StatelessWidget {
                 color: Color(0xFF1A1A1A),
               ),
             ),
+
             const SizedBox(height: 10),
+
             ...notices.map(
               (notice) => Padding(
                 padding: const EdgeInsets.only(bottom: 6),

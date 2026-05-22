@@ -122,8 +122,7 @@ class LoginScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              // 회원가입 링크
-              // 회원가입 링크
+
               // 회원가입 링크
               RichText(
                 text: TextSpan(

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:milzip/screens/recommend/quick_recommend_screen.dart';
 import 'package:milzip/theme/app_colors.dart';
 import 'package:milzip/widgets/app_header.dart';
+import 'benefit/amusement_park.dart';
+import 'benefit/self_development.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const QuickRecommendScreen(),
           _placeholder('AI 맞춤 추천'),
           _placeholder('혜택 지도'),
-          _placeholder('혜택 모아보기'),
+          BenefitCollectionScreen(),
           _placeholder('마이페이지'),
         ],
       ),

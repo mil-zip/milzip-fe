@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:milzip/screens/home.dart'; // ← 추가
+import 'package:milzip/screens/benefit/amusement_park.dart'; // ← 추가
 
 class SignupCompleteScreen extends StatelessWidget {
   final String email;
@@ -14,12 +14,12 @@ class SignupCompleteScreen extends StatelessWidget {
     this.profileImageBytes,
   });
 
-  // 메인 화면으로 이동
+  // 화면 이동 (일단 놀이공원 혜택으로)
   void _handleStart(BuildContext context) {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const HomeScreen()),
-      (route) => false, // 모든 이전 화면 제거
+      MaterialPageRoute(builder: (context) => const BenefitCollectionScreen()),
+      (route) => false,
     );
   }
 

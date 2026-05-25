@@ -127,6 +127,7 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -145,12 +146,14 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
         ),
         centerTitle: true,
       ),
+
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 24),
+
             const Text(
               '밀집계정 로그인에 사용할\n비밀번호를 등록해 주세요.',
               style: TextStyle(
@@ -160,13 +163,17 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
                 height: 1.4,
               ),
             ),
+
             const SizedBox(height: 32),
+
             // 밀집계정 라벨 + 이메일
             const Text(
               '밀집계정',
               style: TextStyle(fontSize: 13, color: Color(0xFFADB5BD)),
             ),
+
             const SizedBox(height: 6),
+
             Text(
               widget.email,
               style: const TextStyle(
@@ -175,23 +182,26 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
                 color: Colors.black,
               ),
             ),
+
             const SizedBox(height: 24),
+
             // 비밀번호 라벨
             const Text(
               '비밀번호',
               style: TextStyle(fontSize: 13, color: Color(0xFFADB5BD)),
             ),
+
             const SizedBox(height: 6),
+
             // 비밀번호 입력
             TextField(
               controller: _passwordController,
-              obscureText: !_isPasswordVisible, // ← 변경
+              obscureText: !_isPasswordVisible,
               decoration:
                   _buildInputDecoration(
                     '비밀번호 입력 (8~20자리)',
                     hasError: _passwordError != null,
                   ).copyWith(
-                    // ← 눈 아이콘 추가
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isPasswordVisible
@@ -208,6 +218,7 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
                     ),
                   ),
             ),
+
             // 비밀번호 에러 메시지
             if (_passwordError != null) ...[
               const SizedBox(height: 6),
@@ -216,17 +227,18 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
                 style: const TextStyle(fontSize: 12, color: Color(0xFFE24B4A)),
               ),
             ],
+
             const SizedBox(height: 10),
+
             // 비밀번호 재입력
             TextField(
               controller: _passwordConfirmController,
-              obscureText: !_isPasswordConfirmVisible, // ← 변경
+              obscureText: !_isPasswordConfirmVisible,
               decoration:
                   _buildInputDecoration(
                     '비밀번호 재입력',
                     hasError: _passwordConfirmError != null,
                   ).copyWith(
-                    // ← 눈 아이콘 추가
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isPasswordConfirmVisible
@@ -244,6 +256,7 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
                     ),
                   ),
             ),
+
             // 비밀번호 재입력 에러 메시지
             if (_passwordConfirmError != null) ...[
               const SizedBox(height: 6),
@@ -252,6 +265,7 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
                 style: const TextStyle(fontSize: 12, color: Color(0xFFE24B4A)),
               ),
             ],
+
             // 에러가 없을 때만 회색 안내 문구 표시
             if (_passwordError == null && _passwordConfirmError == null) ...[
               const SizedBox(height: 8),
@@ -260,14 +274,16 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
                 style: TextStyle(fontSize: 12, color: Color(0xFFADB5BD)),
               ),
             ],
+
             const SizedBox(height: 24),
+
             // 다음 버튼
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isButtonEnabled ? _handleNext : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFADB5BD),
+                  backgroundColor: const Color(0xFF96D484),
                   disabledBackgroundColor: const Color(0xFFADB5BD),
                   foregroundColor: Colors.white,
                   disabledForegroundColor: Colors.white,

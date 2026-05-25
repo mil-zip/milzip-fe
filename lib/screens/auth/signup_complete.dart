@@ -27,6 +27,7 @@ class SignupCompleteScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -45,11 +46,13 @@ class SignupCompleteScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
+
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           children: [
             const SizedBox(height: 40),
+
             const Text(
               '환영합니다!',
               style: TextStyle(
@@ -58,7 +61,9 @@ class SignupCompleteScreen extends StatelessWidget {
                 color: Colors.black,
               ),
             ),
+
             const SizedBox(height: 12),
+
             const Text(
               '밀집계정 가입이 완료되었습니다.\n밀집의 다양한 서비스를 편리하게 이용해 보세요!',
               textAlign: TextAlign.center,
@@ -68,7 +73,9 @@ class SignupCompleteScreen extends StatelessWidget {
                 height: 1.6,
               ),
             ),
+
             const SizedBox(height: 48),
+
             // 프로필 영역
             SizedBox(
               width: 90,
@@ -89,6 +96,7 @@ class SignupCompleteScreen extends StatelessWidget {
                           : null,
                     ),
                   ),
+
                   if (profileImageBytes == null)
                     Positioned(
                       bottom: 0,
@@ -110,7 +118,9 @@ class SignupCompleteScreen extends StatelessWidget {
                 ],
               ),
             ),
+
             const SizedBox(height: 16),
+
             Text(
               email,
               style: const TextStyle(
@@ -119,19 +129,24 @@ class SignupCompleteScreen extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
             ),
+
             const SizedBox(height: 4),
+
             Text(
               nickname,
               style: const TextStyle(fontSize: 14, color: Color(0xFFADB5BD)),
             ),
+
             const SizedBox(height: 40),
+
+            // 시작하기 버튼
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () => _handleStart(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF1F3F5),
-                  foregroundColor: const Color(0xFF495057),
+                  backgroundColor: const Color(0xFF96D484),
+                  foregroundColor: Colors.white,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -144,6 +159,7 @@ class SignupCompleteScreen extends StatelessWidget {
                 ),
               ),
             ),
+
             const SizedBox(height: 24),
           ],
         ),

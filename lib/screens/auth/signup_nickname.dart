@@ -48,6 +48,7 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
   // 변경: 바이트로 읽어서 저장
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
+
     try {
       final XFile? image = await picker.pickImage(
         source: ImageSource.gallery,
@@ -57,6 +58,7 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
       if (image != null) {
         // 이미지를 바이트로 읽기 (웹/모바일 둘 다 동작)
         final bytes = await image.readAsBytes();
+
         setState(() {
           _profileImageBytes = bytes;
         });
@@ -86,6 +88,7 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
+
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -104,12 +107,14 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
         ),
         centerTitle: true,
       ),
+
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 24),
+
             const Text(
               '밀집계정 프로필을\n설정해 주세요.',
               style: TextStyle(
@@ -119,7 +124,9 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
                 height: 1.4,
               ),
             ),
+
             const SizedBox(height: 32),
+
             // 닉네임 라벨 + 글자수
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -137,7 +144,9 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
                 ),
               ],
             ),
+
             const SizedBox(height: 6),
+
             // 닉네임 입력
             TextField(
               controller: _nicknameController,
@@ -170,13 +179,17 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
                 ),
               ),
             ),
+
             const SizedBox(height: 24),
+
             // 프로필 사진 라벨
             const Text(
               '프로필 사진 (선택)',
               style: TextStyle(fontSize: 13, color: Color(0xFFADB5BD)),
             ),
+
             const SizedBox(height: 12),
+
             // 프로필 사진 영역 (가운데 정렬)
             Center(
               child: GestureDetector(
@@ -193,6 +206,7 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
                         decoration: BoxDecoration(
                           color: const Color(0xFFE9ECEF),
                           shape: BoxShape.circle,
+
                           // 사진이 있으면 이미지로 채우기
                           // 변경: 바이트 데이터를 MemoryImage로 표시
                           image: _profileImageBytes != null
@@ -203,6 +217,7 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
                               : null,
                         ),
                       ),
+
                       // 카메라 아이콘 (우측 하단)
                       Positioned(
                         bottom: 0,
@@ -226,14 +241,16 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
                 ),
               ),
             ),
+
             const SizedBox(height: 24),
+
             // 확인 버튼
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isButtonEnabled ? _handleConfirm : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFADB5BD),
+                  backgroundColor: const Color(0xFF96D484),
                   disabledBackgroundColor: const Color(0xFFADB5BD),
                   foregroundColor: Colors.white,
                   disabledForegroundColor: Colors.white,

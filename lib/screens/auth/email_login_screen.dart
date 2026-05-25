@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart'; // ← 추가
+import 'package:flutter/gestures.dart';
 import 'package:milzip/screens/auth/signup_email.dart'; // 회원가입 창
 //import 'package:milzip/screens/bottom_navigator.dart'; // 메인화면 창
 import 'package:milzip/screens/home.dart';
@@ -56,11 +56,13 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
       filled: true,
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+
       // 평상시 보더
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(5),
         borderSide: const BorderSide(color: Color(0xFFD5D7D9), width: 1),
       ),
+
       // 클릭(포커스)했을 때 보더
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(5),
@@ -73,6 +75,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -91,33 +94,43 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
         ),
         centerTitle: true,
       ),
+
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           children: [
             const SizedBox(height: 32),
+
             // 이메일 입력
             TextField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               decoration: _buildInputDecoration('이메일 아이디'),
             ),
+
             const SizedBox(height: 10),
+
             // 비밀번호 입력
             TextField(
               controller: _passwordController,
               obscureText: true,
               decoration: _buildInputDecoration('비밀번호'),
             ),
+
             const SizedBox(height: 10),
+
             // 로그인 버튼
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isButtonEnabled ? _handleLogin : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFADB5BD),
+                  // 입력 완료 후 활성화된 버튼 색상
+                  backgroundColor: const Color(0xFF96D484),
+
+                  // 입력 전 비활성화된 버튼 색상
                   disabledBackgroundColor: const Color(0xFFADB5BD),
+
                   foregroundColor: Colors.white,
                   disabledForegroundColor: Colors.white,
                   elevation: 0,
@@ -132,8 +145,10 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                 ),
               ),
             ),
+
             const SizedBox(height: 20),
-            // 회원가입 링크 (두 부분으로 나눠서 스타일 다르게)
+
+            // 회원가입 링크
             Center(
               child: RichText(
                 text: TextSpan(
@@ -148,10 +163,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                       style: const TextStyle(
                         color: Color(0xFF495057),
                         fontWeight: FontWeight.w500,
-                        decoration: TextDecoration.underline, // 밑줄 추가
-                        decorationColor: Color(0xFF495057), // 밑줄 색상
+                        decoration: TextDecoration.underline,
+                        decorationColor: Color(0xFF495057),
                       ),
-                      // "회원가입하기" 글자만 클릭 가능하게
                       recognizer: TapGestureRecognizer()
                         ..onTap = () {
                           Navigator.push(

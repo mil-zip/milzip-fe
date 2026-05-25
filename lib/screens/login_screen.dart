@@ -17,6 +17,7 @@ class LoginScreen extends StatelessWidget {
           child: Column(
             children: [
               const Spacer(flex: 3),
+
               // 로고 영역
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -32,6 +33,7 @@ class LoginScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
+
                   // 고양이 마스코트 자리
                   Image.asset(
                     'assets/images/milzip_mascot.png',
@@ -40,7 +42,9 @@ class LoginScreen extends StatelessWidget {
                   ),
                 ],
               ),
+
               const SizedBox(height: 16),
+
               const Text(
                 '군인을 위한 맞춤형 혜택·추천 서비스, MILZIP',
                 style: TextStyle(
@@ -49,7 +53,9 @@ class LoginScreen extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+
               const Spacer(flex: 2),
+
               // 카카오 로그인 버튼
               GestureDetector(
                 onTap: () {
@@ -61,12 +67,16 @@ class LoginScreen extends StatelessWidget {
                   height: 56,
                 ),
               ),
+
               const SizedBox(height: 8),
+
               const Text(
                 '카카오 계정으로 로그인하기',
                 style: TextStyle(fontSize: 14, color: Colors.black87),
               ),
+
               const SizedBox(height: 40),
+
               // 이메일 로그인 버튼
               SizedBox(
                 width: double.infinity,
@@ -80,8 +90,8 @@ class LoginScreen extends StatelessWidget {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF1F3F5),
-                    foregroundColor: Colors.black,
+                    backgroundColor: const Color(0xFF96D484),
+                    foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -94,7 +104,9 @@ class LoginScreen extends StatelessWidget {
                   ),
                 ),
               ),
+
               const SizedBox(height: 10),
+
               // 둘러보기 버튼
               SizedBox(
                 width: double.infinity,
@@ -107,8 +119,8 @@ class LoginScreen extends StatelessWidget {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF1F3F5),
-                    foregroundColor: Colors.black,
+                    backgroundColor: const Color(0xFF96D484),
+                    foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -121,6 +133,7 @@ class LoginScreen extends StatelessWidget {
                   ),
                 ),
               ),
+
               const SizedBox(height: 16),
 
               // 회원가입 링크
@@ -137,10 +150,9 @@ class LoginScreen extends StatelessWidget {
                       style: const TextStyle(
                         color: Color(0xFF495057),
                         fontWeight: FontWeight.w500,
-                        decoration: TextDecoration.underline, // 밑줄 추가
-                        decorationColor: Color(0xFF495057), // 밑줄 색상
+                        decoration: TextDecoration.underline,
+                        decorationColor: Color(0xFF495057),
                       ),
-                      // "회원가입하기" 글자만 클릭 가능
                       recognizer: TapGestureRecognizer()
                         ..onTap = () {
                           Navigator.push(
@@ -154,6 +166,7 @@ class LoginScreen extends StatelessWidget {
                   ],
                 ),
               ),
+
               const Spacer(flex: 3),
             ],
           ),

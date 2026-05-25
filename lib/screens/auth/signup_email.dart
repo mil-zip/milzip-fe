@@ -98,6 +98,7 @@ class _SignupEmailScreenState extends State<SignupEmailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -116,12 +117,14 @@ class _SignupEmailScreenState extends State<SignupEmailScreen> {
         ),
         centerTitle: true,
       ),
+
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 24),
+
             // 안내 문구 (단계에 따라 텍스트 변경)
             Text(
               _guideText,
@@ -132,6 +135,7 @@ class _SignupEmailScreenState extends State<SignupEmailScreen> {
                 height: 1.4,
               ),
             ),
+
             const SizedBox(height: 32),
 
             // ========== 1단계 (인증 요청 전): 이메일 + 인증요청 버튼 ==========
@@ -145,13 +149,15 @@ class _SignupEmailScreenState extends State<SignupEmailScreen> {
                       decoration: _buildInputDecoration('이메일 입력'),
                     ),
                   ),
+
                   const SizedBox(width: 8),
+
                   ElevatedButton(
                     onPressed: _isVerifyButtonEnabled
                         ? _handleVerificationRequest
                         : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFADB5BD),
+                      backgroundColor: const Color(0xFF96D484),
                       disabledBackgroundColor: const Color(0xFFADB5BD),
                       foregroundColor: Colors.white,
                       disabledForegroundColor: Colors.white,
@@ -174,7 +180,9 @@ class _SignupEmailScreenState extends State<SignupEmailScreen> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 8),
+
               const Text(
                 '* 입력한 이메일로 인증번호가 발송됩니다.',
                 style: TextStyle(fontSize: 12, color: Color(0xFFADB5BD)),
@@ -203,7 +211,9 @@ class _SignupEmailScreenState extends State<SignupEmailScreen> {
                   ),
                 ),
               ),
+
               const SizedBox(height: 10),
+
               // 인증번호 입력
               TextField(
                 controller: _codeController,
@@ -225,7 +235,7 @@ class _SignupEmailScreenState extends State<SignupEmailScreen> {
                     ? _handleNext
                     : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFADB5BD),
+                  backgroundColor: const Color(0xFF96D484),
                   disabledBackgroundColor: const Color(0xFFADB5BD),
                   foregroundColor: Colors.white,
                   disabledForegroundColor: Colors.white,

@@ -12,7 +12,7 @@ class BenefitCategory {
 }
 
 final List<BenefitCategory> categories = [
-  BenefitCategory(label: '영화', icon: Icons.movie_outlined),
+  BenefitCategory(label: '영화', icon: Icons.local_movies),
   BenefitCategory(label: '놀이공원', icon: Icons.attractions_outlined),
   BenefitCategory(label: '자기개발', icon: Icons.menu_book_outlined),
 ];
@@ -55,7 +55,6 @@ class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
                   ),
                 ),
               ),
-
               _CategoryTabs(
                 categories: categories,
                 selectedIndex: _selectedCategoryIndex,
@@ -65,9 +64,7 @@ class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
                   });
                 },
               ),
-
               const SizedBox(height: 20),
-
               if (_selectedCategoryIndex == 0) ...[
                 const MovieSection(),
               ] else if (_selectedCategoryIndex == 1) ...[
@@ -122,12 +119,13 @@ class _CategoryTabs extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.symmetric(horizontal: 4),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                // ⬇️ 변경: 위쪽 padding을 더 줘서 아이콘에 여유 공간 확보
+                padding: const EdgeInsets.only(top: 16, bottom: 12),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border.all(
                     color: isSelected
-                        ? const Color(0xFF1A3A8F)
+                        ? const Color(0xFF293C2C)
                         : const Color(0xFFD0D0D0),
                     width: isSelected ? 2 : 1,
                   ),
@@ -136,11 +134,12 @@ class _CategoryTabs extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // ⬇️ 변경: Transform.translate 제거하고 그냥 Icon으로
                     Icon(
                       cat.icon,
                       size: 28,
                       color: isSelected
-                          ? const Color(0xFF1A3A8F)
+                          ? const Color(0xFF293C2C)
                           : const Color(0xFFAAAAAA),
                     ),
                     const SizedBox(height: 6),
@@ -152,7 +151,7 @@ class _CategoryTabs extends StatelessWidget {
                             ? FontWeight.w600
                             : FontWeight.w400,
                         color: isSelected
-                            ? const Color(0xFF1A3A8F)
+                            ? const Color(0xFF293C2C)
                             : const Color(0xFFAAAAAA),
                       ),
                     ),
@@ -201,7 +200,7 @@ class _ThemeParkCarouselState extends State<_ThemeParkCarousel> {
     return Column(
       children: [
         SizedBox(
-          height: 360,
+          height: 390,
           child: PageView.builder(
             controller: _pageController,
             itemCount: widget.themeParks.length,
@@ -215,39 +214,40 @@ class _ThemeParkCarouselState extends State<_ThemeParkCarousel> {
 
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: _ThemeParkCard(
-                  park: park,
-                  onBookmarkToggle: () {
-                    widget.onBookmarkToggle(park.id);
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: _ThemeParkCard(
+                    park: park,
+                    onBookmarkToggle: () {
+                      widget.onBookmarkToggle(park.id);
 
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          park.isBookmarked
-                              ? '${park.name}이(가) 저장되었습니다!'
-                              : '${park.name} 저장이 취소되었습니다.',
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            park.isBookmarked
+                                ? '${park.name}이(가) 저장되었습니다!'
+                                : '${park.name} 저장이 취소되었습니다.',
+                          ),
+                          duration: const Duration(seconds: 1),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
                         ),
-                        duration: const Duration(seconds: 1),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               );
             },
           ),
         ),
-
         const SizedBox(height: 16),
-
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(widget.themeParks.length, (index) {
@@ -260,7 +260,7 @@ class _ThemeParkCarouselState extends State<_ThemeParkCarousel> {
               height: 8,
               decoration: BoxDecoration(
                 color: isActive
-                    ? const Color(0xFF1A3A8F)
+                    ? const Color(0xFF293C2C)
                     : const Color(0xFFD0D0D0),
                 borderRadius: BorderRadius.circular(4),
               ),
@@ -281,6 +281,7 @@ class _ThemeParkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -293,108 +294,118 @@ class _ThemeParkCard extends StatelessWidget {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: park.cardColor,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+          SizedBox(
+            height: 165,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: park.cardColor,
+                image: park.imageAsset != null
+                    ? DecorationImage(
+                        image: AssetImage(park.imageAsset!),
+                        fit: BoxFit.cover,
+                        colorFilter: ColorFilter.mode(
+                          Colors.black.withOpacity(0.32),
+                          BlendMode.darken,
+                        ),
+                      )
+                    : null,
               ),
-            ),
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.25),
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: Text(
-                        park.region,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
                         ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        park.discountLabel,
-                        style: TextStyle(
-                          color: park.cardColor,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 50),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        park.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: onBookmarkToggle,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          shape: BoxShape.circle,
+                          color: Colors.white.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(7),
                         ),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          transitionBuilder: (child, anim) =>
-                              ScaleTransition(scale: anim, child: child),
-                          child: Icon(
-                            park.isBookmarked
-                                ? Icons.bookmark
-                                : Icons.bookmark_border,
-                            key: ValueKey(park.isBookmarked),
+                        child: Text(
+                          park.region,
+                          style: const TextStyle(
                             color: Colors.white,
-                            size: 22,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          park.discountLabel,
+                          style: TextStyle(
+                            color: park.cardColor,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          park.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: onBookmarkToggle,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            transitionBuilder: (child, anim) =>
+                                ScaleTransition(scale: anim, child: child),
+                            child: Icon(
+                              park.isBookmarked
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_border,
+                              key: ValueKey(park.isBookmarked),
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -406,32 +417,32 @@ class _ThemeParkCard extends StatelessWidget {
                       color: Color(0xFF888888),
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      '${park.shortAddress} · ${park.validUntilLabel}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF666666),
+                    Expanded(
+                      child: Text(
+                        '${park.shortAddress} · ${park.validUntilLabel}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF666666),
+                        ),
                       ),
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 12),
-
+                const SizedBox(height: 10),
                 Text(
                   park.benefit,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 14,
                     color: Color(0xFF1A1A1A),
-                    height: 1.4,
+                    height: 1.35,
                     fontWeight: FontWeight.w500,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
-
-                const SizedBox(height: 12),
-
+                const SizedBox(height: 10),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -446,19 +457,21 @@ class _ThemeParkCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      '${park.formatPrice(park.originalPrice)}원',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFFAAAAAA),
-                        decoration: TextDecoration.lineThrough,
+                    Flexible(
+                      child: Text(
+                        '${park.formatPrice(park.originalPrice)}원',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFAAAAAA),
+                          decoration: TextDecoration.lineThrough,
+                        ),
                       ),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 12),
-
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -480,11 +493,12 @@ class _ThemeParkCard extends StatelessWidget {
                       Flexible(
                         child: Text(
                           park.requiredDocument,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xFF555555),
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -523,9 +537,7 @@ class _DiscountConditionSection extends StatelessWidget {
               color: Color(0xFF1A1A1A),
             ),
           ),
-
           const SizedBox(height: 14),
-
           Container(
             decoration: BoxDecoration(
               border: Border.all(color: const Color(0xFFE5E5E5)),
@@ -561,29 +573,29 @@ class _DiscountConditionSection extends StatelessWidget {
                               ),
                             ),
                           ),
-
                           const SizedBox(width: 14),
-
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                condition.title,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A1A),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  condition.title,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF1A1A1A),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                condition.subtitle,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF888888),
+                                const SizedBox(height: 2),
+                                Text(
+                                  condition.subtitle,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF888888),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -636,9 +648,7 @@ class _NoticeSection extends StatelessWidget {
                 color: Color(0xFF1A1A1A),
               ),
             ),
-
             const SizedBox(height: 10),
-
             ...notices.map(
               (notice) => Padding(
                 padding: const EdgeInsets.only(bottom: 6),

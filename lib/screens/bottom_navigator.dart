@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'benefit/amusement_park.dart';
+import 'map/benefit_map.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,10 +12,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = [
+  final List<Widget> _pages = const [
     Placeholder(), // 빠른 추천 (추후)
     Placeholder(), // AI 맞춤 (추후)
-    Placeholder(), // 혜택 지도 (추후)
+    BenefitMapScreen(), // 혜택 지도
     BenefitCollectionScreen(), // 혜택 모아보기
     Placeholder(), // 마이페이지 (추후)
   ];
@@ -27,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF1A3A8F),
+        selectedItemColor: const Color(0xFF293C2C),
         unselectedItemColor: const Color(0xFFAAAAAA),
         items: const [
           BottomNavigationBarItem(

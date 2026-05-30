@@ -3,7 +3,7 @@ import 'package:milzip/screens/recommend/quick_recommend_screen.dart';
 import 'package:milzip/theme/app_colors.dart';
 import 'package:milzip/widgets/app_header.dart';
 import 'benefit/amusement_park.dart';
-import 'benefit/self_development.dart';
+import 'map/benefit_map.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,24 +15,36 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
+  Widget _buildCurrentPage() {
+    switch (_currentIndex) {
+      case 0:
+        return const QuickRecommendScreen();
+      case 1:
+        return _placeholder('AI 맞춤 추천');
+      case 2:
+        return const BenefitMapScreen();
+      case 3:
+        return BenefitCollectionScreen();
+      case 4:
+        return _placeholder('마이페이지');
+      default:
+        return const QuickRecommendScreen();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: const AppHeader(),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          const QuickRecommendScreen(),
-          _placeholder('AI 맞춤 추천'),
-          _placeholder('혜택 지도'),
-          BenefitCollectionScreen(),
-          _placeholder('마이페이지'),
-        ],
-      ),
+      body: _buildCurrentPage(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
+        onTap: (i) {
+          setState(() {
+            _currentIndex = i;
+          });
+        },
         type: BottomNavigationBarType.fixed,
         backgroundColor: AppColors.surface,
         selectedItemColor: Colors.black,

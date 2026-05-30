@@ -15,6 +15,7 @@ class ThemePark {
   final int discountedPrice;
   final String requiredDocument;
   final DateTime? validUntil;
+  final String? imageAsset;
   bool isBookmarked;
 
   ThemePark({
@@ -29,11 +30,11 @@ class ThemePark {
     required this.discountedPrice,
     required this.requiredDocument,
     this.validUntil,
+    this.imageAsset,
     this.isBookmarked = false,
   });
 
   // ─── JSON → ThemePark 객체 변환 ─────────────────────────────────────────
-  // 백엔드에서 받은 JSON 데이터를 객체로 만들 때 사용
   factory ThemePark.fromJson(Map<String, dynamic> json) {
     return ThemePark(
       id: json['id'],
@@ -49,6 +50,7 @@ class ThemePark {
       validUntil: json['valid_until'] != null
           ? DateTime.parse(json['valid_until'])
           : null,
+      imageAsset: json['image_asset'],
     );
   }
 
@@ -114,7 +116,6 @@ class ThemePark {
   String get shortAddress {
     final parts = address.split(' ');
     if (parts.length >= 2) {
-      // "경기도 용인시" → "경기 용인"
       final province = parts[0].replaceAll(RegExp(r'(도|특별시|광역시)$'), '');
       final city = parts[1].replaceAll(RegExp(r'(시|군|구)$'), '');
       return '$province $city';
@@ -128,17 +129,16 @@ class ThemePark {
     return '${validUntil!.year}.${validUntil!.month.toString().padLeft(2, '0')}.${validUntil!.day.toString().padLeft(2, '0')}까지';
   }
 
-  // 카드 색상 (id 기반 매핑 - 나중에 백엔드에 color 필드 추가 시 교체 가능)
+  // 카드 색상 (이미지가 없을 때 폴백 배경색)
   Color get cardColor {
     switch (id) {
       case 1:
-        return const Color(0xFFD0312D); // 에버랜드 - 빨강
+        return const Color(0xFFD0312D);
       case 2:
-        return const Color(0xFF1A3A8F); // 롯데월드 - 파랑
+        return const Color(0xFF1A3A8F);
       case 3:
-        return const Color(0xFF2E7D32); // 서울랜드 - 초록
+        return const Color(0xFF2E7D32);
       default:
-        // 그 외엔 id 기반으로 색상 자동 할당
         const palette = [
           Color(0xFF8E44AD),
           Color(0xFFE67E22),

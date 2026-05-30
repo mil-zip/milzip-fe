@@ -15,6 +15,7 @@ const List<Map<String, dynamic>> _themeParkJsonData = [
     "discounted_price": 0,
     "required_document": "휴가증, 병력증명서",
     "valid_until": "2026-09-30",
+    "image_asset": "assets/images/park_everland.png",
   },
   {
     "id": 2,
@@ -28,6 +29,7 @@ const List<Map<String, dynamic>> _themeParkJsonData = [
     "discounted_price": 37000,
     "required_document": "휴가증, 병력증명서",
     "valid_until": null,
+    "image_asset": "assets/images/park_lotte.png",
   },
   {
     "id": 3,
@@ -41,6 +43,7 @@ const List<Map<String, dynamic>> _themeParkJsonData = [
     "discounted_price": 15600,
     "required_document": "휴가증, 나라사랑카드",
     "valid_until": null,
+    "image_asset": "assets/images/park_seoul.png",
   },
 ];
 

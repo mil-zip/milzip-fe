@@ -14,6 +14,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   final LatLng _defaultCenter = LatLng(37.5665, 126.9780);
+  final LatLng _fallbackCenter = LatLng(37.95745120515425, 127.3174892339337);
 
   final List<String> _categories = ['음식', '숙박', 'PC방', '서비스', 'TMO'];
   String _selectedCategory = '음식';
@@ -45,8 +46,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       await _moveToCurrentLocation();
       return;
     }
-
-    // 위치 권한 팝업 화면 확인을 위해 주석 처리
 
     _permissionDialogShown = true;
 
@@ -116,6 +115,8 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
                   label: '허용 안 함',
                   onTap: () {
                     Navigator.pop(dialogContext);
+                    _moveToFallbackLocation();
+                    _showSnackBar('위치 권한이 없어 포천시외버스터미널 기준으로 보여드립니다.');
                   },
                 ),
               ],
@@ -130,7 +131,8 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
     if (!serviceEnabled) {
-      _showSnackBar('기기 위치 서비스가 꺼져 있습니다.');
+      _moveToFallbackLocation();
+      _showSnackBar('위치 서비스를 사용할 수 없어 포천시외버스터미널 기준으로 보여드립니다.');
       return;
     }
 
@@ -142,7 +144,8 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
 
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      _showSnackBar('위치 권한이 허용되지 않았습니다.');
+      _moveToFallbackLocation();
+      _showSnackBar('위치 권한이 없어 포천시외버스터미널 기준으로 보여드립니다.');
       return;
     }
 
@@ -157,6 +160,11 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     final currentLatLng = LatLng(position.latitude, position.longitude);
 
     _mapController?.setCenter(currentLatLng);
+    _mapController?.setLevel(4);
+  }
+
+  void _moveToFallbackLocation() {
+    _mapController?.setCenter(_fallbackCenter);
     _mapController?.setLevel(4);
   }
 

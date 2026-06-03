@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 
+import '../../data/store_dummy.dart';
+import '../../models/store.dart';
+import 'store_detail_screen.dart';
+
 class BenefitMapScreen extends StatefulWidget {
   const BenefitMapScreen({super.key});
 
@@ -13,17 +17,52 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
   KakaoMapController? _mapController;
   final TextEditingController _searchController = TextEditingController();
 
-  final LatLng _defaultCenter = LatLng(37.5665, 126.9780);
   final LatLng _fallbackCenter = LatLng(37.95745120515425, 127.3174892339337);
+
+  late final List<Store> _stores;
 
   final List<String> _categories = ['음식', '숙박', 'PC방', '서비스', 'TMO'];
   String _selectedCategory = '음식';
+  String _searchText = '';
 
+  Store? _selectedStore;
   bool _permissionDialogShown = false;
+
+  List<Store> get _filteredStores {
+    return _stores.where((store) {
+      final matchesCategory = store.categoryLabel == _selectedCategory;
+      final keyword = _searchText.trim().toLowerCase();
+
+      final matchesSearch =
+          keyword.isEmpty ||
+          store.name.toLowerCase().contains(keyword) ||
+          store.address.toLowerCase().contains(keyword) ||
+          store.categoryDetail.toLowerCase().contains(keyword) ||
+          store.menu.toLowerCase().contains(keyword);
+
+      return matchesCategory && matchesSearch;
+    }).toList();
+  }
+
+  List<Marker> get _storeMarkers {
+    return _filteredStores.map((store) {
+      final selected = _selectedStore?.id == store.id;
+
+      return Marker(
+        markerId: 'store_${store.id}',
+        latLng: store.latLng,
+        width: selected ? 42 : 30,
+        height: selected ? 52 : 38,
+        zIndex: selected ? 10 : 1,
+        infoWindowContent: store.name,
+      );
+    }).toList();
+  }
 
   @override
   void initState() {
     super.initState();
+    _stores = getDummyStores();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showLocationPermissionDialogIfNeeded();
@@ -75,9 +114,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
                     color: Color(0xFF111111),
                   ),
                 ),
-
                 const SizedBox(height: 34),
-
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -94,9 +131,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 32),
-
                 _PermissionButton(
                   label: '앱 사용 중에만 허용',
                   onTap: () async {
@@ -158,7 +193,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     );
 
     final currentLatLng = LatLng(position.latitude, position.longitude);
-
     _mapController?.setCenter(currentLatLng);
     _mapController?.setLevel(4);
   }
@@ -166,6 +200,23 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
   void _moveToFallbackLocation() {
     _mapController?.setCenter(_fallbackCenter);
     _mapController?.setLevel(4);
+  }
+
+  void _selectStoreByMarkerId(String markerId) {
+    final id = int.tryParse(markerId.replaceFirst('store_', ''));
+    if (id == null) return;
+
+    final matchedStores = _stores.where((store) => store.id == id).toList();
+    if (matchedStores.isEmpty) return;
+
+    final store = matchedStores.first;
+
+    setState(() {
+      _selectedStore = store;
+    });
+
+    _mapController?.setCenter(store.latLng);
+    _mapController?.setLevel(3);
   }
 
   void _showSnackBar(String message) {
@@ -188,22 +239,32 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     return Stack(
       children: [
         KakaoMap(
-          center: _defaultCenter,
-          currentLevel: 7,
+          center: _fallbackCenter,
+          currentLevel: 4,
+          markers: _storeMarkers,
           zoomControl: true,
           mapTypeControl: false,
           onMapCreated: (controller) {
             _mapController = controller;
           },
+          onMarkerTap: (markerId, latLng, zoomLevel) {
+            _selectStoreByMarkerId(markerId);
+          },
         ),
-
         Positioned(
           top: 22,
           left: 24,
           right: 24,
           child: Column(
             children: [
-              _MapSearchField(controller: _searchController),
+              _MapSearchField(
+                controller: _searchController,
+                onChanged: (value) {
+                  setState(() {
+                    _searchText = value;
+                  });
+                },
+              ),
               const SizedBox(height: 14),
               _CategoryChipBar(
                 categories: _categories,
@@ -211,16 +272,16 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
                 onSelected: (category) {
                   setState(() {
                     _selectedCategory = category;
+                    _selectedStore = null;
                   });
                 },
               ),
             ],
           ),
         ),
-
         Positioned(
           right: 18,
-          bottom: 24,
+          bottom: _selectedStore == null ? 24 : 210,
           child: FloatingActionButton.small(
             heroTag: 'current_location',
             backgroundColor: Colors.white,
@@ -230,6 +291,15 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
             child: const Icon(Icons.my_location_outlined),
           ),
         ),
+        if (_selectedStore != null)
+          _StoreBottomSheet(
+            store: _selectedStore!,
+            onClose: () {
+              setState(() {
+                _selectedStore = null;
+              });
+            },
+          ),
       ],
     );
   }
@@ -237,13 +307,15 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
 
 class _MapSearchField extends StatelessWidget {
   final TextEditingController controller;
+  final ValueChanged<String> onChanged;
 
-  const _MapSearchField({required this.controller});
+  const _MapSearchField({required this.controller, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      onChanged: onChanged,
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
         hintText: '검색하기',
@@ -311,6 +383,189 @@ class _CategoryChipBar extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _StoreBottomSheet extends StatefulWidget {
+  final Store store;
+  final VoidCallback onClose;
+
+  const _StoreBottomSheet({required this.store, required this.onClose});
+
+  @override
+  State<_StoreBottomSheet> createState() => _StoreBottomSheetState();
+}
+
+class _StoreBottomSheetState extends State<_StoreBottomSheet> {
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
+
+  bool _openedDetail = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _sheetController.addListener(() {
+      if (_sheetController.size >= 0.98 && !_openedDetail) {
+        _openedDetail = true;
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => StoreDetailScreen(store: widget.store),
+            ),
+          ).then((_) {
+            _openedDetail = false;
+
+            if (_sheetController.isAttached) {
+              _sheetController.animateTo(
+                0.32,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _sheetController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      controller: _sheetController,
+      initialChildSize: 0.32,
+      minChildSize: 0.26,
+      maxChildSize: 1.0,
+      snap: true,
+      snapSizes: const [0.32, 1.0],
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 16,
+                offset: Offset(0, -4),
+              ),
+            ],
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+            children: [
+              Center(
+                child: Container(
+                  width: 56,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD0D0D0),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.store.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF111111),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE9FFF4),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF00C878)),
+                    ),
+                    child: const Text(
+                      '밀집추천',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF00A86B),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: widget.onClose,
+                    icon: const Icon(Icons.close, size: 28),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.verified_user_outlined,
+                    size: 20,
+                    color: Color(0xFF00C878),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      widget.store.benefitDescription,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF00C878),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '현재 영업 중 · ${widget.store.closeTime}에 영업 종료',
+                style: const TextStyle(
+                  fontSize: 15,
+                  height: 1.45,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF555555),
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                '1.2km',
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.45,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF555555),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

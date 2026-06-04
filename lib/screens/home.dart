@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:milzip/screens/my_page_screen.dart';
 import 'package:milzip/screens/recommend/quick_recommend_screen.dart';
 import 'package:milzip/theme/app_colors.dart';
 import 'package:milzip/widgets/app_header.dart';
@@ -26,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 3:
         return BenefitCollectionScreen();
       case 4:
-        return _placeholder('마이페이지');
+        return const MyPageScreen();
       default:
         return const QuickRecommendScreen();
     }

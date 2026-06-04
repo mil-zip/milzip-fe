@@ -33,6 +33,32 @@ class Theater {
     );
   }
 
+  /// 실제 API 응답용
+  factory Theater.fromApi(Map<String, dynamic> json) {
+    return Theater(
+      id: json['id'] ?? 0,
+      brand: json['cinemaChain'] ?? '',
+      benefit: json['description'] ?? '',
+      requiredDocument: '나라사랑카드',
+      discountType: TheaterDiscountType.amount,
+      externalLink: '',
+    );
+  }
+
+  /// 브랜드별 로고 에셋 이미지
+  String? get logoAsset {
+    switch (brand) {
+      case 'CGV':
+        return 'assets/images/cgv_logo.png';
+      case '롯데시네마':
+        return 'assets/images/lotte_logo.png';
+      case '메가박스':
+        return 'assets/images/megabox_logo.jpg';
+      default:
+        return null;
+    }
+  }
+
   static TheaterDiscountType _parseDiscountType(String value) {
     switch (value) {
       case 'AMOUNT':

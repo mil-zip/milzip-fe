@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/theme_park.dart';
 import '../../data/theme_park_dummy.dart';
+import '../../services/amusement_park_api.dart';
 import 'movie.dart';
 import 'self_development.dart';
 
@@ -14,7 +15,7 @@ class BenefitCategory {
 final List<BenefitCategory> categories = [
   BenefitCategory(label: '영화', icon: Icons.local_movies),
   BenefitCategory(label: '놀이공원', icon: Icons.attractions_outlined),
-  BenefitCategory(label: '자기개발', icon: Icons.menu_book_outlined),
+  BenefitCategory(label: '청년정책', icon: Icons.menu_book_outlined),
 ];
 
 class BenefitCollectionScreen extends StatefulWidget {
@@ -27,12 +28,46 @@ class BenefitCollectionScreen extends StatefulWidget {
 
 class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
   int _selectedCategoryIndex = 1;
-  late List<ThemePark> _themeParks;
+  List<ThemePark> _themeParks = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _themeParks = getDummyThemeParks();
+    // ignore: avoid_print
+    print('[benefit] init selected=$_selectedCategoryIndex');
+    _loadAmusementParks();
+  }
+
+  /// React의 useEffect + fetch와 동일한 역할
+  Future<void> _loadAmusementParks() async {
+    // ignore: avoid_print
+    print('[benefit-amusement] load start');
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+      final data = await AmusementParkApi.getList();
+      // ignore: avoid_print
+      print('[benefit-amusement] load success count=${data.length}');
+      if (!mounted) return;
+      setState(() {
+        _themeParks = data.map((json) => ThemePark.fromApi(json)).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      // ignore: avoid_print
+      print('[benefit-amusement] load error $e');
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+        // 실패 시 더미 데이터 폴백
+        _themeParks = getDummyThemeParks();
+      });
+    }
   }
 
   @override
@@ -59,6 +94,8 @@ class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
                 categories: categories,
                 selectedIndex: _selectedCategoryIndex,
                 onTap: (index) {
+                  // ignore: avoid_print
+                  print('[benefit] tab change index=$index');
                   setState(() {
                     _selectedCategoryIndex = index;
                   });
@@ -68,6 +105,24 @@ class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
               if (_selectedCategoryIndex == 0) ...[
                 const MovieSection(),
               ] else if (_selectedCategoryIndex == 1) ...[
+              if (_isLoading)
+                const SizedBox(
+                  height: 300,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      Text('불러오기 실패: $_error',
+                          style: const TextStyle(color: Colors.red)),
+                      const SizedBox(height: 8),
+                      const Text('더미 데이터로 표시합니다.',
+                          style: TextStyle(color: Color(0xFF888888))),
+                    ],
+                  ),
+                ),
                 _ThemeParkCarousel(
                   themeParks: _themeParks,
                   onBookmarkToggle: (id) {
@@ -186,7 +241,7 @@ class _ThemeParkCarouselState extends State<_ThemeParkCarousel> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 0.85);
+    _pageController = PageController(viewportFraction: 0.93);
   }
 
   @override
@@ -281,6 +336,7 @@ class _ThemeParkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 340,
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: Colors.white,
@@ -294,8 +350,8 @@ class _ThemeParkCard extends StatelessWidget {
         ],
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
+          // ── 이미지 영역 ────────────────────────────────────────────────
           SizedBox(
             height: 165,
             child: Container(
@@ -303,9 +359,9 @@ class _ThemeParkCard extends StatelessWidget {
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: park.cardColor,
-                image: park.imageAsset != null
+                image: park.displayImage != null
                     ? DecorationImage(
-                        image: AssetImage(park.imageAsset!),
+                        image: AssetImage(park.displayImage!),
                         fit: BoxFit.cover,
                         colorFilter: ColorFilter.mode(
                           Colors.black.withOpacity(0.32),
@@ -317,42 +373,33 @@ class _ThemeParkCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // 할인 배지 (우상단) — 주황색으로 눈에 띄게
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                        child: Text(
-                          park.region,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 5,
+                          vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: const Color(0xFFFF6B35),
                           borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF6B35).withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Text(
                           park.discountLabel,
-                          style: TextStyle(
-                            color: park.cardColor,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
                           ),
                         ),
                       ),
@@ -404,107 +451,110 @@ class _ThemeParkCard extends StatelessWidget {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.place_outlined,
-                      size: 15,
-                      color: Color(0xFF888888),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        '${park.shortAddress} · ${park.validUntilLabel}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF666666),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  park.benefit,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF1A1A1A),
-                    height: 1.35,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      park.discountType == DiscountType.free
-                          ? '무료'
-                          : '${park.formatPrice(park.discountedPrice)}원',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        '${park.formatPrice(park.originalPrice)}원',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFFAAAAAA),
-                          decoration: TextDecoration.lineThrough,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+          // ── 정보 영역 (고정 높이) ─────────────────────────────────────
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
                       const Icon(
-                        Icons.assignment_outlined,
-                        size: 14,
-                        color: Color(0xFF555555),
+                        Icons.place_outlined,
+                        size: 15,
+                        color: Color(0xFF888888),
                       ),
-                      const SizedBox(width: 5),
-                      Flexible(
+                      const SizedBox(width: 4),
+                      Expanded(
                         child: Text(
-                          park.requiredDocument,
+                          '${park.shortAddress} · ${park.validUntilLabel}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF555555),
+                            color: Color(0xFF666666),
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  Text(
+                    park.benefit,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF1A1A1A),
+                      height: 1.35,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        park.discountType == DiscountType.free
+                            ? '무료'
+                            : '${park.formatPrice(park.discountedPrice)}원',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF6B35),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          '${park.formatPrice(park.originalPrice)}원',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFFAAAAAA),
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F5F5),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.assignment_outlined,
+                          size: 14,
+                          color: Color(0xFF555555),
+                        ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            park.requiredDocument,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF555555),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

@@ -23,7 +23,7 @@ const List<Map<String, dynamic>> _themeParkJsonData = [
     "address": "서울특별시 송파구 올림픽로 240",
     "latitude": 37.5111158,
     "longitude": 127.0981670,
-    "benefit": "휴가 군인 자유이용권 3만원 할인",
+    "benefit": "휴가 군인 자유이용권 3만원 할인\n",
     "discount_type": "AMOUNT",
     "original_price": 67000,
     "discounted_price": 37000,

@@ -27,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 3:
         return BenefitCollectionScreen();
       case 4:
-        return _placeholder('마이페이지');
+        return const MyPageScreen();
       default:
         return const QuickRecommendScreen();
     }

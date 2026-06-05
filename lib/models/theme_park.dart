@@ -35,6 +35,7 @@ class ThemePark {
   });
 
   // ─── JSON → ThemePark 객체 변환 ─────────────────────────────────────────
+  /// 기존 더미 데이터용 팩토리
   factory ThemePark.fromJson(Map<String, dynamic> json) {
     return ThemePark(
       id: json['id'],
@@ -51,6 +52,37 @@ class ThemePark {
           ? DateTime.parse(json['valid_until'])
           : null,
       imageAsset: json['image_asset'],
+    );
+  }
+
+  /// 실제 API 응답용 팩토리
+  factory ThemePark.fromApi(Map<String, dynamic> json) {
+    // discountDescription → DiscountType 매핑
+    DiscountType type;
+    final desc = (json['discountDescription'] ?? '') as String;
+    if (desc.contains('무료') || json['discountedPrice'] == 0) {
+      type = DiscountType.free;
+    } else if (desc.contains('%')) {
+      type = DiscountType.percentage;
+    } else {
+      type = DiscountType.amount;
+    }
+
+    return ThemePark(
+      id: json['id'] ?? 0,
+      name: json['title'] ?? '',
+      address: json['location'] ?? '',
+      latitude: 0,
+      longitude: 0,
+      benefit: json['description'] ?? '',
+      discountType: type,
+      originalPrice: json['originalPrice'] ?? 0,
+      discountedPrice: json['discountedPrice'] ?? 0,
+      requiredDocument: json['verificationMethod'] ?? '',
+      validUntil: json['validUntil'] != null
+          ? DateTime.tryParse(json['validUntil'])
+          : null,
+      imageAsset: json['imageUrl'],
     );
   }
 
@@ -123,31 +155,31 @@ class ThemePark {
     return address;
   }
 
-  // 만료일 표시 (없으면 "연중무휴")
+  // 만료일 표시 (없으면 "상시할인")
   String get validUntilLabel {
-    if (validUntil == null) return '연중무휴';
+    if (validUntil == null) return '상시할인';
     return '${validUntil!.year}.${validUntil!.month.toString().padLeft(2, '0')}.${validUntil!.day.toString().padLeft(2, '0')}까지';
   }
 
-  // 카드 색상 (이미지가 없을 때 폴백 배경색)
-  Color get cardColor {
+  // 카드 색상 (이미지가 없을 때 폴백 배경색 — surfaceSoft 통일)
+  Color get cardColor => const Color(0xFFEEF2EA);
+
+  // id → 기존 에셋 이미지 매핑
+  String? get fallbackImage {
     switch (id) {
       case 1:
-        return const Color(0xFFD0312D);
+        return 'assets/images/park_everland.png';
       case 2:
-        return const Color(0xFF1A3A8F);
+        return 'assets/images/park_lotte.png';
       case 3:
-        return const Color(0xFF2E7D32);
+        return 'assets/images/park_seoul.png';
       default:
-        const palette = [
-          Color(0xFF8E44AD),
-          Color(0xFFE67E22),
-          Color(0xFF16A085),
-          Color(0xFFC0392B),
-        ];
-        return palette[id % palette.length];
+        return null;
     }
   }
+
+  // imageAsset이 없으면 fallbackImage 사용
+  String? get displayImage => imageAsset ?? fallbackImage;
 
   // 가격을 1,000 단위 콤마 처리
   static String _formatPrice(int price) {

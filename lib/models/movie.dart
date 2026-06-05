@@ -37,6 +37,25 @@ class Movie {
     );
   }
 
+  /// 실제 API 응답용
+  factory Movie.fromApi(Map<String, dynamic> json) {
+    return Movie(
+      id: int.tryParse(json['movieCd'] ?? '') ?? 0,
+      title: json['title'] ?? '',
+      genre: json['genre'] ?? '',
+      runtimeMinutes: json['runtimeMinutes'] ?? 0,
+      totalAudience: json['audienceCount'] ?? 0,
+      rank: json['rank'] ?? 0,
+      tagline: '',
+      posterColorHex: '#333333',
+      posterAsset: json['posterUrl'],  // 네트워크 이미지 URL
+    );
+  }
+
+  /// posterAsset이 URL인지 확인
+  bool get isPosterNetwork =>
+      posterAsset != null && posterAsset!.startsWith('http');
+
   String get formattedAudience {
     if (totalAudience >= 10000) {
       final man = (totalAudience / 10000).round();

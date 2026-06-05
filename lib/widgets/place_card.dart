@@ -4,8 +4,13 @@ import 'package:milzip/theme/app_colors.dart';
 
 class PlaceCard extends StatelessWidget {
   final Place place;
+  final IconData categoryIcon;
 
-  const PlaceCard({super.key, required this.place});
+  const PlaceCard({
+    super.key,
+    required this.place,
+    this.categoryIcon = Icons.restaurant,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -34,8 +39,8 @@ class PlaceCard extends StatelessWidget {
               color: AppColors.surfaceSoft,
               child: place.imageUrl != null
                   ? Image.network(place.imageUrl!, fit: BoxFit.cover)
-                  : const Icon(
-                      Icons.restaurant,
+                  : Icon(
+                      categoryIcon,
                       size: 40,
                       color: AppColors.border,
                     ),

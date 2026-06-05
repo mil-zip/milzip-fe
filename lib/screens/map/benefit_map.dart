@@ -87,6 +87,8 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       return;
     }
 
+    // 위치 권한 팝업 화면 확인을 위해 주석 처리
+
     _permissionDialogShown = true;
 
     if (!mounted) return;

@@ -116,7 +116,10 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                   .map(
                     (p) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: PlaceCard(place: p),
+                      child: PlaceCard(
+                        place: p,
+                        categoryIcon: _categoryIcons[_selectedCategory],
+                      ),
                     ),
                   )
                   .toList(),
@@ -149,7 +152,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                     fontFamily: 'TmoneyRoundWind',
                     fontSize: 42,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF4A7E2E),
+                    color: AppColors.primary2,
                     height: 1.1,
                     letterSpacing: -1,
                   ),
@@ -187,7 +190,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                         height: 140 + p * 30,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF4A7E2E).withAlpha(
+                          color: AppColors.primary2.withAlpha(
                             (7 + p * 10).toInt(),
                           ),
                         ),
@@ -198,7 +201,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                         height: 112 + p * 16,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF4A7E2E).withAlpha(
+                          color: AppColors.primary2.withAlpha(
                             (16 + p * 20).toInt(),
                           ),
                         ),
@@ -238,11 +241,11 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                             gradient: const LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [Color(0xFF5E9642), Color(0xFF3A6B24)],
+                              colors: [AppColors.primaryLight, AppColors.primary2],
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF4A7E2E).withAlpha(
+                                color: AppColors.primary2.withAlpha(
                                   (55 + p * 50).toInt(),
                                 ),
                                 blurRadius: 20 + p * 10,
@@ -281,7 +284,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF344B37), Color(0xFF4A6B3E)],
+            colors: [AppColors.primary1, AppColors.hover],
           ),
         ),
         child: Stack(
@@ -294,7 +297,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
               child: Opacity(
                 opacity: 0.13,
                 child: Image.asset(
-                  'assets/images/milzip_badge.png',
+                  'assets/images/milzip_logo.png',
                   fit: BoxFit.fitHeight,
                 ),
               ),
@@ -393,10 +396,10 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isSelected
-                    ? AppColors.secondaryBg
+                    ? AppColors.surfaceSoft
                     : const Color(0xFFF7F7F7),
                 border: Border.all(
-                  color: isSelected ? AppColors.secondary : AppColors.border,
+                  color: isSelected ? AppColors.primary2 : AppColors.border,
                   width: isSelected ? 2.0 : 1.2,
                 ),
               ),
@@ -404,7 +407,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                 _categoryIcons[index],
                 size: 26,
                 color: isSelected
-                    ? AppColors.secondaryDark
+                    ? AppColors.primary2
                     : const Color(0xFFBBBBBB),
               ),
             ),
@@ -415,7 +418,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
               style: TextStyle(
                 fontSize: 11,
                 color: isSelected
-                    ? AppColors.secondaryDark
+                    ? AppColors.primary2
                     : const Color(0xFFAAAAAA),
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               ),

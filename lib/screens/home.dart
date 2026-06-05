@@ -5,6 +5,7 @@ import 'package:milzip/theme/app_colors.dart';
 import 'package:milzip/widgets/app_header.dart';
 import 'benefit/amusement_park.dart';
 import 'map/benefit_map.dart';
+import 'map/benefit_map.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 3:
         return BenefitCollectionScreen();
       case 4:
-        return const MyPageScreen();
+        return _placeholder('마이페이지');
       default:
         return const QuickRecommendScreen();
     }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/store.dart';
 import '../../../models/store_review_draft.dart';
+import '../../../theme/app_colors.dart';
 import 'review_submit_screen.dart';
 
 class ReviewSurveyScreen extends StatefulWidget {
@@ -19,6 +20,8 @@ class ReviewSurveyScreen extends StatefulWidget {
 }
 
 class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
+  final ScrollController _scrollController = ScrollController();
+
   String? benefitAnswer;
   String? waitTimeAnswer;
   String? purposeAnswer;
@@ -34,7 +37,18 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
       rating > 0 &&
       goodPoints.isNotEmpty;
 
-  void _complete() {
+  void _autoAdvance() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  Future<void> _complete() async {
     if (!canSubmit) return;
 
     final draft = StoreReviewDraft(
@@ -47,15 +61,16 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
       goodPoints: goodPoints.toList(),
     );
 
-    Navigator.push(
+    final result = await Navigator.push<SubmittedStoreReview>(
       context,
       MaterialPageRoute(
-        builder: (_) => ReviewSubmitScreen(
-          store: widget.store,
-          draft: draft,
-        ),
+        builder: (_) => ReviewSubmitScreen(store: widget.store, draft: draft),
       ),
     );
+
+    if (result != null && mounted) {
+      Navigator.pop(context, result);
+    }
   }
 
   @override
@@ -70,7 +85,7 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(34, 10, 34, 18),
         child: Align(
@@ -79,13 +94,14 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
           child: ElevatedButton(
             onPressed: canSubmit ? _complete : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF8FE0A6),
-              disabledBackgroundColor: const Color(0xFFE5E5E5),
-              foregroundColor: Colors.black,
+              backgroundColor: AppColors.primaryAccent,
+              disabledBackgroundColor: AppColors.surfaceSoft,
+              foregroundColor: AppColors.textWhite,
+              disabledForegroundColor: AppColors.textSub,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(28),
               ),
             ),
             child: const Text(
@@ -97,9 +113,11 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
       ),
       body: SafeArea(
         child: ListView(
+          controller: _scrollController,
           padding: EdgeInsets.zero,
           children: [
-            Padding(
+            Container(
+              color: AppColors.surface,
               padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
               child: Row(
                 children: [
@@ -117,35 +135,53 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                 ],
               ),
             ),
+
             _QuestionBlock(
               title: '군인 할인 혜택 또는 관련 혜택을 받으셨나요?',
               options: const ['혜택 받음', '혜택 받지 못함', '일부 받음'],
               selected: benefitAnswer,
-              onSelected: (value) => setState(() => benefitAnswer = value),
+              onSelected: (value) {
+                setState(() => benefitAnswer = value);
+                _autoAdvance();
+              },
             ),
+
             if (benefitAnswer != null)
               _QuestionBlock(
                 title: '대기 시간은 어떠셨나요?',
                 options: const ['바로 입장', '30분 이내', '1시간 이내', '1시간 이상'],
                 selected: waitTimeAnswer,
-                onSelected: (value) => setState(() => waitTimeAnswer = value),
+                onSelected: (value) {
+                  setState(() => waitTimeAnswer = value);
+                  _autoAdvance();
+                },
               ),
+
             if (waitTimeAnswer != null)
               _QuestionBlock(
                 title: '방문하신 목적은 무엇인가요?',
                 options: const ['데이트', '외출', '휴가', '회식'],
                 selected: purposeAnswer,
-                onSelected: (value) => setState(() => purposeAnswer = value),
+                onSelected: (value) {
+                  setState(() => purposeAnswer = value);
+                  _autoAdvance();
+                },
               ),
+
             if (purposeAnswer != null)
               _QuestionBlock(
                 title: '누구와 함께했나요?',
                 options: const ['애인', '혼자', '동기', '선후임'],
                 selected: companionAnswer,
-                onSelected: (value) => setState(() => companionAnswer = value),
+                onSelected: (value) {
+                  setState(() => companionAnswer = value);
+                  _autoAdvance();
+                },
               ),
+
             if (companionAnswer != null)
-              Padding(
+              Container(
+                color: AppColors.surface,
                 padding: const EdgeInsets.fromLTRB(34, 28, 34, 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,18 +191,24 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
+                        color: AppColors.textMain,
                       ),
                     ),
                     const SizedBox(height: 24),
-                    _HalfStarRating(
+                    HalfStarRating(
                       rating: rating,
-                      onChanged: (value) => setState(() => rating = value),
+                      onChanged: (value) {
+                        setState(() => rating = value);
+                        _autoAdvance();
+                      },
                     ),
                   ],
                 ),
               ),
+
             if (rating > 0)
-              Padding(
+              Container(
+                color: AppColors.surface,
                 padding: const EdgeInsets.fromLTRB(34, 20, 34, 40),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,15 +218,17 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
+                        color: AppColors.textMain,
                       ),
                     ),
                     const SizedBox(height: 20),
                     Wrap(
                       spacing: 12,
-                      runSpacing: 12,
+                      runSpacing: 14,
                       children: goodPointOptions.map((option) {
                         final selected = goodPoints.contains(option);
-                        return _PinkChoiceChip(
+
+                        return _MilitaryChoiceChip(
                           label: option,
                           selected: selected,
                           onTap: () {
@@ -225,23 +269,28 @@ class _QuestionBlock extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(34, 26, 34, 28),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style:
-                  const TextStyle(fontSize: 23, fontWeight: FontWeight.w900)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 23,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textMain,
+            ),
+          ),
           const SizedBox(height: 24),
           Wrap(
             spacing: 12,
             runSpacing: 14,
             children: options.map((option) {
-              final isSelected = selected == option;
-              return _GreenChoiceChip(
+              return _MilitaryChoiceChip(
                 label: option,
-                selected: isSelected,
+                selected: selected == option,
                 onTap: () => onSelected(option),
               );
             }).toList(),
@@ -252,70 +301,67 @@ class _QuestionBlock extends StatelessWidget {
   }
 }
 
-class _GreenChoiceChip extends StatelessWidget {
+class _MilitaryChoiceChip extends StatefulWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
 
-  const _GreenChoiceChip({
+  const _MilitaryChoiceChip({
     required this.label,
     required this.selected,
     required this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFFE9FFF4) : const Color(0xFFF0F0F0),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: selected ? const Color(0xFF00C878) : Colors.transparent,
-            width: 1.5,
-          ),
-        ),
-        child: Text(label,
-            style:
-                const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
-      ),
-    );
-  }
+  State<_MilitaryChoiceChip> createState() => _MilitaryChoiceChipState();
 }
 
-class _PinkChoiceChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _PinkChoiceChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+class _MilitaryChoiceChipState extends State<_MilitaryChoiceChip> {
+  bool pressed = false;
 
   @override
   Widget build(BuildContext context) {
+    final backgroundColor = pressed
+        ? AppColors.pressed
+        : widget.selected
+        ? AppColors.selected
+        : AppColors.surfaceSoft;
+
+    final borderColor = widget.selected ? AppColors.pressed : AppColors.border;
+
+    final textColor = pressed || widget.selected
+        ? AppColors.textWhite
+        : AppColors.textMain;
+
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFFFF6F89) : const Color(0xFFFFE6EA),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: selected ? const Color(0xFFE93055) : Colors.transparent,
-            width: 2,
+      onTapDown: (_) => setState(() => pressed = true),
+      onTapCancel: () => setState(() => pressed = false),
+      onTapUp: (_) => setState(() => pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: pressed ? 0.96 : 1,
+        duration: const Duration(milliseconds: 90),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          constraints: const BoxConstraints(minWidth: 118),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: borderColor,
+              width: widget.selected ? 2.5 : 1.5,
+            ),
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-            color: selected ? Colors.white : Colors.black,
+          child: Text(
+            widget.label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: textColor,
+            ),
           ),
         ),
       ),
@@ -323,11 +369,12 @@ class _PinkChoiceChip extends StatelessWidget {
   }
 }
 
-class _HalfStarRating extends StatelessWidget {
+class HalfStarRating extends StatelessWidget {
   final double rating;
   final ValueChanged<double> onChanged;
 
-  const _HalfStarRating({
+  const HalfStarRating({
+    super.key,
     required this.rating,
     required this.onChanged,
   });
@@ -335,32 +382,63 @@ class _HalfStarRating extends StatelessWidget {
   void _updateRating(BuildContext context, Offset localPosition) {
     final box = context.findRenderObject() as RenderBox;
     final width = box.size.width;
-    final value = (localPosition.dx / width * 5).clamp(0.5, 5.0);
-    onChanged((value * 2).ceil() / 2);
+    final raw = (localPosition.dx / width * 5).clamp(0.5, 5.0);
+    onChanged((raw * 2).ceil() / 2);
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (details) => _updateRating(context, details.localPosition),
-      onHorizontalDragUpdate: (details) =>
-          _updateRating(context, details.localPosition),
+      onHorizontalDragUpdate: (details) {
+        _updateRating(context, details.localPosition);
+      },
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(5, (index) {
-          final starValue = index + 1;
-          final filled = rating >= starValue;
-          final halfFilled = rating >= starValue - 0.5 && rating < starValue;
-
-          return Icon(
-            halfFilled ? Icons.star_half : Icons.star,
-            size: 54,
-            color: filled || halfFilled
-                ? const Color(0xFFFF5A4F)
-                : const Color(0xFFF0F0F0),
-          );
+          final fill = (rating - index).clamp(0.0, 1.0);
+          return _PartialStar(fill: fill);
         }),
       ),
     );
+  }
+}
+
+class _PartialStar extends StatelessWidget {
+  final double fill;
+
+  const _PartialStar({required this.fill});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 56,
+      height: 56,
+      child: Stack(
+        children: [
+          const Icon(Icons.star, size: 56, color: Color(0xFFF0F0F0)),
+          ClipRect(
+            clipper: _StarClipper(fill),
+            child: const Icon(Icons.star, size: 56, color: Color(0xFFFF5A4F)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StarClipper extends CustomClipper<Rect> {
+  final double fill;
+
+  _StarClipper(this.fill);
+
+  @override
+  Rect getClip(Size size) {
+    return Rect.fromLTWH(0, 0, size.width * fill, size.height);
+  }
+
+  @override
+  bool shouldReclip(covariant _StarClipper oldClipper) {
+    return oldClipper.fill != fill;
   }
 }

@@ -4,6 +4,7 @@ import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 
 import '../../data/store_dummy.dart';
 import '../../models/store.dart';
+import '../../theme/app_colors.dart';
 import 'store_detail_screen.dart';
 
 class BenefitMapScreen extends StatefulWidget {
@@ -111,7 +112,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
                     fontSize: 18,
                     height: 1.35,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF111111),
+                    color: AppColors.textMain,
                   ),
                 ),
                 const SizedBox(height: 34),
@@ -202,6 +203,31 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     _mapController?.setLevel(4);
   }
 
+  void _runSearch(String keyword) {
+    final trimmed = keyword.trim();
+
+    setState(() {
+      _searchText = trimmed;
+      _selectedStore = null;
+    });
+
+    final results = _filteredStores;
+
+    if (results.isEmpty) {
+      _showSnackBar('검색 결과가 없습니다.');
+      return;
+    }
+
+    final firstStore = results.first;
+
+    setState(() {
+      _selectedStore = firstStore;
+    });
+
+    _mapController?.setCenter(firstStore.latLng);
+    _mapController?.setLevel(3);
+  }
+
   void _selectStoreByMarkerId(String markerId) {
     final id = int.tryParse(markerId.replaceFirst('store_', ''));
     if (id == null) return;
@@ -262,8 +288,10 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
                 onChanged: (value) {
                   setState(() {
                     _searchText = value;
+                    _selectedStore = null;
                   });
                 },
+                onSubmitted: _runSearch,
               ),
               const SizedBox(height: 14),
               _CategoryChipBar(
@@ -284,8 +312,8 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
           bottom: _selectedStore == null ? 24 : 210,
           child: FloatingActionButton.small(
             heroTag: 'current_location',
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF222222),
+            backgroundColor: AppColors.surface,
+            foregroundColor: AppColors.primary,
             elevation: 3,
             onPressed: _requestLocationPermission,
             child: const Icon(Icons.my_location_outlined),
@@ -308,31 +336,44 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
 class _MapSearchField extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSubmitted;
 
-  const _MapSearchField({required this.controller, required this.onChanged});
+  const _MapSearchField({
+    required this.controller,
+    required this.onChanged,
+    required this.onSubmitted,
+  });
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
       onChanged: onChanged,
+      onSubmitted: onSubmitted,
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
         hintText: '검색하기',
-        prefixIcon: const Icon(Icons.search, color: Color(0xFF222222)),
+        prefixIcon: const Icon(Icons.search, color: AppColors.primary),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.94),
+        fillColor: AppColors.surface.withOpacity(0.94),
         contentPadding: const EdgeInsets.symmetric(vertical: 16),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF222222), width: 1.5),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF00C878), width: 2),
+          borderSide: const BorderSide(
+            color: AppColors.primaryAccent,
+            width: 2,
+          ),
         ),
       ),
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textMain,
+      ),
     );
   }
 }
@@ -367,16 +408,18 @@ class _CategoryChipBar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 18),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: selected ? const Color(0xFF00C878) : Colors.white,
+                color: selected ? AppColors.primaryAccent : AppColors.surface,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFF00C878), width: 2),
+                border: Border.all(color: AppColors.primaryAccent, width: 2),
               ),
               child: Text(
                 category,
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
-                  color: selected ? Colors.white : const Color(0xFF00C878),
+                  color: selected
+                      ? AppColors.textWhite
+                      : AppColors.primaryAccent,
                 ),
               ),
             ),
@@ -453,7 +496,7 @@ class _StoreBottomSheetState extends State<_StoreBottomSheet> {
       builder: (context, scrollController) {
         return Container(
           decoration: const BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             boxShadow: [
               BoxShadow(
@@ -489,33 +532,19 @@ class _StoreBottomSheetState extends State<_StoreBottomSheet> {
                       style: const TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF111111),
+                        color: AppColors.textMain,
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE9FFF4),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFF00C878)),
-                    ),
-                    child: const Text(
-                      '밀집추천',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF00A86B),
-                      ),
-                    ),
-                  ),
+                  const _MapRecommendBadge(),
                   IconButton(
                     onPressed: widget.onClose,
-                    icon: const Icon(Icons.close, size: 28),
+                    icon: const Icon(
+                      Icons.close,
+                      size: 28,
+                      color: AppColors.textSub,
+                    ),
                   ),
                 ],
               ),
@@ -525,7 +554,7 @@ class _StoreBottomSheetState extends State<_StoreBottomSheet> {
                   const Icon(
                     Icons.verified_user_outlined,
                     size: 20,
-                    color: Color(0xFF00C878),
+                    color: AppColors.primaryAccent,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -536,7 +565,7 @@ class _StoreBottomSheetState extends State<_StoreBottomSheet> {
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF00C878),
+                        color: AppColors.primaryAccent,
                       ),
                     ),
                   ),
@@ -549,7 +578,7 @@ class _StoreBottomSheetState extends State<_StoreBottomSheet> {
                   fontSize: 15,
                   height: 1.45,
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFF555555),
+                  color: AppColors.textSub,
                 ),
               ),
               const SizedBox(height: 6),
@@ -559,13 +588,37 @@ class _StoreBottomSheetState extends State<_StoreBottomSheet> {
                   fontSize: 15,
                   height: 1.45,
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFF555555),
+                  color: AppColors.textSub,
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _MapRecommendBadge extends StatelessWidget {
+  const _MapRecommendBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.badge,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.primaryAccent),
+      ),
+      child: const Text(
+        '밀집추천',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: AppColors.badgeText,
+        ),
+      ),
     );
   }
 }
@@ -601,7 +654,7 @@ class _PermissionIllustration extends StatelessWidget {
           style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF333333),
+            color: AppColors.textMain,
           ),
         ),
       ],
@@ -622,7 +675,7 @@ class _PermissionButton extends StatelessWidget {
       child: TextButton(
         onPressed: onTap,
         style: TextButton.styleFrom(
-          foregroundColor: Colors.black,
+          foregroundColor: AppColors.textMain,
           padding: const EdgeInsets.symmetric(vertical: 13),
         ),
         child: Text(

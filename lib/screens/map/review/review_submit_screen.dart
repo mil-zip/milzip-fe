@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../models/store.dart';
 import '../../../models/store_review_draft.dart';
+import '../../../theme/app_colors.dart';
 
 class ReviewSubmitScreen extends StatefulWidget {
   final Store store;
@@ -45,22 +46,25 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
   void _register() {
     if (!canRegister) return;
 
-    Navigator.popUntil(context, (route) => route.isFirst);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('리뷰가 등록되었습니다.'),
-        duration: Duration(seconds: 1),
-      ),
+    final submitted = SubmittedStoreReview(
+      draft: widget.draft,
+      content: _contentController.text.trim(),
+      imagePaths: _images.map((image) => image.path).toList(),
+      createdAt: DateTime.now(),
     );
+
+    Navigator.pop(context, submitted);
   }
 
   @override
   Widget build(BuildContext context) {
     final draft = widget.draft;
+    final now = DateTime.now();
+    final date =
+        '${now.year}.${now.month.toString().padLeft(2, '0')}.${now.day.toString().padLeft(2, '0')}';
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(34, 10, 34, 18),
         child: Align(
@@ -69,13 +73,14 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
           child: ElevatedButton(
             onPressed: canRegister ? _register : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFC2C8),
-              disabledBackgroundColor: const Color(0xFFE8E8E8),
-              foregroundColor: Colors.black,
+              backgroundColor: AppColors.primaryAccent,
+              disabledBackgroundColor: AppColors.surfaceSoft,
+              foregroundColor: AppColors.textWhite,
+              disabledForegroundColor: AppColors.textSub,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 46, vertical: 18),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(28),
               ),
             ),
             child: const Text(
@@ -86,206 +91,309 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
         ),
       ),
       body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.zero,
+        child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
-              child: Row(
+            _SubmitHeader(
+              onBack: () => Navigator.pop(context),
+              onClose: () => Navigator.pop(context),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.only(bottom: 34),
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_ios_new, size: 28),
-                  ),
-                  const Spacer(),
-                  const Icon(Icons.star_border, size: 36),
-                  const SizedBox(width: 18),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, size: 36),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 34),
-              child: Text(
-                widget.store.name,
-                style: const TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 34),
-              child: Text(
-                '★${draft.rating.toStringAsFixed(1)}  ·  ${DateTime.now().year}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().day.toString().padLeft(2, '0')} · 1번째 방문',
-                style: const TextStyle(fontSize: 17, color: Color(0xFF777777)),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 34),
-              child: Text(
-                '${draft.waitTimeAnswer} · ${draft.purposeAnswer} · ${draft.companionAnswer}',
-                style: const TextStyle(fontSize: 17, color: Color(0xFF555555)),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 34),
-              child: Row(
-                children: [
-                  Text(
-                    draft.rating.toStringAsFixed(1),
-                    style: const TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFFFF5A4F),
-                    ),
-                  ),
-                  const SizedBox(width: 18),
-                  ...List.generate(
-                    5,
-                    (_) => const Icon(
-                      Icons.star,
-                      size: 42,
-                      color: Color(0xFFFF5A4F),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 34),
-              child: Text(
-                '🛡️ 군장병 ${draft.benefitAnswer} 받았어요!',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF00C878),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 34),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: draft.goodPoints.map((point) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFC8FFD2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 34),
                     child: Text(
-                      point,
+                      widget.store.name,
                       style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textMain,
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Divider(height: 1, color: Color(0xFFE0E0E0)),
-            const SizedBox(height: 26),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 34),
-              child: Row(
-                children: [
-                  ..._images.asMap().entries.map((entry) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 14),
-                      child: Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Image.file(
-                              File(entry.value.path),
-                              width: 150,
-                              height: 150,
-                              fit: BoxFit.cover,
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 34),
+                    child: Text(
+                      '★${draft.rating.toStringAsFixed(1)} · $date · 1번째 방문',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        color: AppColors.textSub,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 34),
+                    child: Text(
+                      '${draft.waitTimeAnswer} · ${draft.purposeAnswer} · ${draft.companionAnswer}',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        color: AppColors.textSub,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 34),
+                    child: Row(
+                      children: [
+                        Text(
+                          draft.rating.toStringAsFixed(1),
+                          style: const TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFFFF5A4F),
+                          ),
+                        ),
+                        const SizedBox(width: 18),
+                        _StaticStarRating(rating: draft.rating),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 34),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.verified_user_outlined,
+                          color: AppColors.primaryAccent,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            draft.benefitSentence,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.primaryAccent,
                             ),
                           ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _images.removeAt(entry.key);
-                                });
-                              },
-                              child: const CircleAvatar(
-                                radius: 14,
-                                backgroundColor: Colors.black,
-                                child: Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 16,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 34),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: draft.goodPoints.map((point) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.badge,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Text(
+                            point,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.badgeText,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 34),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceSoft,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: TextField(
+                      controller: _contentController,
+                      maxLines: 6,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText:
+                            '✎ 당신의 후기를 작성해주세요!\n\n리뷰 작성 시 욕설, 비방, 명예훼손성 표현은 삼가해주세요.',
+                        hintStyle: TextStyle(
+                          fontSize: 17,
+                          height: 1.45,
+                          color: AppColors.textSub,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        height: 1.45,
+                        color: AppColors.textMain,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 34),
+                    child: Row(
+                      children: [
+                        ..._images.asMap().entries.map((entry) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 14),
+                            child: Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Image.file(
+                                    File(entry.value.path),
+                                    width: 150,
+                                    height: 150,
+                                    fit: BoxFit.cover,
+                                  ),
                                 ),
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _images.removeAt(entry.key);
+                                      });
+                                    },
+                                    child: const CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor: AppColors.pressed,
+                                      child: Icon(
+                                        Icons.close,
+                                        color: AppColors.textWhite,
+                                        size: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                        GestureDetector(
+                          onTap: _pickImage,
+                          child: Container(
+                            width: 74,
+                            height: 74,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.surface,
+                              border: Border.all(
+                                color: AppColors.primary,
+                                width: 2,
                               ),
                             ),
+                            child: const Icon(
+                              Icons.add,
+                              size: 42,
+                              color: AppColors.primary,
+                            ),
                           ),
-                        ],
-                      ),
-                    );
-                  }),
-                  GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      width: 74,
-                      height: 74,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.black, width: 2),
-                      ),
-                      child: const Icon(Icons.add, size: 42),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 32),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 34),
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F1F1),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: TextField(
-                controller: _contentController,
-                maxLines: 7,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  hintText:
-                      '✎ 당신의 후기를 작성해주세요!\n\n리뷰 작성 시 욕설, 비방, 명예훼손성 표현은 삼가해주세요.',
-                  hintStyle: TextStyle(
-                    fontSize: 17,
-                    height: 1.45,
-                    color: Color(0xFF888888),
-                  ),
-                ),
-                style: const TextStyle(fontSize: 17, height: 1.45),
-              ),
-            ),
-            const SizedBox(height: 40),
           ],
         ),
       ),
     );
+  }
+}
+
+class _SubmitHeader extends StatelessWidget {
+  final VoidCallback onBack;
+  final VoidCallback onClose;
+
+  const _SubmitHeader({required this.onBack, required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.background,
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: onBack,
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              size: 28,
+              color: AppColors.textSub,
+            ),
+          ),
+          const Spacer(),
+          const Icon(Icons.star_border, size: 36, color: AppColors.textMain),
+          const SizedBox(width: 18),
+          IconButton(
+            onPressed: onClose,
+            icon: const Icon(Icons.close, size: 36, color: AppColors.textMain),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StaticStarRating extends StatelessWidget {
+  final double rating;
+
+  const _StaticStarRating({required this.rating});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: List.generate(5, (index) {
+        final fill = (rating - index).clamp(0.0, 1.0);
+
+        return SizedBox(
+          width: 38,
+          height: 38,
+          child: Stack(
+            children: [
+              const Icon(Icons.star, size: 38, color: Color(0xFFF0F0F0)),
+              ClipRect(
+                clipper: _StarClipper(fill),
+                child: const Icon(
+                  Icons.star,
+                  size: 38,
+                  color: Color(0xFFFF5A4F),
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _StarClipper extends CustomClipper<Rect> {
+  final double fill;
+
+  _StarClipper(this.fill);
+
+  @override
+  Rect getClip(Size size) {
+    return Rect.fromLTWH(0, 0, size.width * fill, size.height);
+  }
+
+  @override
+  bool shouldReclip(covariant _StarClipper oldClipper) {
+    return oldClipper.fill != fill;
   }
 }

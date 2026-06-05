@@ -37,6 +37,8 @@ dependencies:
   image_picker: ^1.1.2    # ← 프로필 사진 기능을 위해 추가!
   kakao_map_plugin: ^0.4.0  # 카카오맵 플러그인
   geolocator: ^14.0.2 # 위치 권한
+  http: ^1.2.1 # API 호출
+  url_launcher: ^6.2.5 # 외부 링크 열기
 
 
 

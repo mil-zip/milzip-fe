@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:milzip/screens/my_page_screen.dart';
 import 'package:milzip/screens/recommend/quick_recommend_screen.dart';
 import 'package:milzip/theme/app_colors.dart';
 import 'package:milzip/widgets/app_header.dart';
 import 'benefit/amusement_park.dart';
+import 'map/benefit_map.dart';
 import 'map/benefit_map.dart';
 
 class HomeScreen extends StatefulWidget {

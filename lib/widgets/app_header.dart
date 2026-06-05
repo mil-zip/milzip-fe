@@ -31,16 +31,10 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // 로고 — 좌측
-            const Text(
-              'MIL.ZIP',
-              style: TextStyle(
-                fontFamily: 'TmoneyRoundWind',
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: AppColors.primary2,
-                letterSpacing: -0.5,
-                height: 1.0,
-              ),
+            Image.asset(
+              'assets/images/milzip.png',
+              height: 22,
+              fit: BoxFit.fitHeight,
             ),
             // 위치 — 우측 끝
             GestureDetector(

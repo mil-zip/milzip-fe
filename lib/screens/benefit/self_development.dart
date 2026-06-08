@@ -22,11 +22,10 @@ class _SelfDevelopmentSectionState extends State<SelfDevelopmentSection> {
 
   // 알려진 카테고리 목록 (필터 칩)
   static const _filterCategories = [
-    '금융',
+    '복지',
     '일자리',
     '주거',
     '교육',
-    '문화',
     '참여·권리',
   ];
 
@@ -50,11 +49,42 @@ class _SelfDevelopmentSectionState extends State<SelfDevelopmentSection> {
     });
 
     try {
-      final result = await SelfDevelopmentApi.getList(
-        page: page,
-        size: 5,
-        category: _selectedCategory,
-      );
+      // 복지 카테고리는 금융 + 문화 모두 조회
+      late SelfDevelopmentPage result;
+
+      if (_selectedCategory == '복지') {
+        final financeResult = await SelfDevelopmentApi.getList(
+          page: page,
+          size: 5,
+          category: '금융',
+        );
+        final cultureResult = await SelfDevelopmentApi.getList(
+          page: page,
+          size: 5,
+          category: '문화',
+        );
+
+        // 두 결과 합치기
+        final allContent = [
+          ...financeResult.content,
+          ...cultureResult.content,
+        ];
+
+        result = SelfDevelopmentPage(
+          content: allContent,
+          hasNext: financeResult.hasNext || cultureResult.hasNext,
+          pageNum: page,
+          totalElements: financeResult.totalElements + cultureResult.totalElements,
+          totalPages: (financeResult.totalPages + cultureResult.totalPages + 1) ~/ 2,
+        );
+      } else {
+        result = await SelfDevelopmentApi.getList(
+          page: page,
+          size: 5,
+          category: _selectedCategory,
+        );
+      }
+
       final all =
           result.content.map((j) => SelfDevelopment.fromApi(j)).toList();
       // ignore: avoid_print
@@ -252,11 +282,10 @@ class _ProgramCard extends StatelessWidget {
 
   // 카테고리별 (텍스트색, 배경색) 매핑
   static const Map<String, (Color, Color)> _categoryColors = {
-    '금융': (Color(0xFF6B9358), Color(0xFFEEF5E8)),      // 초록
+    '복지': (Color(0xFF6B9358), Color(0xFFEEF5E8)),      // 초록
     '일자리': (Color(0xFFFF6B35), Color(0xFFFFEFE8)),    // 주황
     '주거': (Color(0xFF455F3B), Color(0xFFEEF2EA)),     // 올리브
     '교육': (Color(0xFF1F5ACB), Color(0xFFDDE8FF)),     // 파랑
-    '문화': (Color(0xFFB047C7), Color(0xFFF7E8FB)),      // 보라
     '참여·권리': (Color(0xFFD4973A), Color(0xFFFFF8E7)), // 앰버
     '교통': (Color(0xFF1B7F9E), Color(0xFFE0F2F8)),    // 청록
   };

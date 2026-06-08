@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:milzip/screens/my_page_screen.dart';
 import 'package:milzip/screens/recommend/quick_recommend_screen.dart';
+import 'package:milzip/screens/recommend/ai_recommend_screen.dart';
+import 'package:milzip/services/location_service.dart';
 import 'package:milzip/theme/app_colors.dart';
 import 'package:milzip/widgets/app_header.dart';
 import 'benefit/amusement_park.dart';
-import 'map/benefit_map.dart';
 import 'map/benefit_map.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -16,29 +17,39 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  String _locationLabel = '위치 확인 중...';
 
-  Widget _buildCurrentPage() {
-    switch (_currentIndex) {
-      case 0:
-        return const QuickRecommendScreen();
-      case 1:
-        return _placeholder('AI 맞춤 추천');
-      case 2:
-        return const BenefitMapScreen();
-      case 3:
-        return BenefitCollectionScreen();
-      case 4:
-        return _placeholder('마이페이지');
-      default:
-        return const QuickRecommendScreen();
+  // 탭 전환 시 재생성 방지
+  final _pages = const [
+    QuickRecommendScreen(),
+    AiRecommendScreen(),
+    BenefitMapScreen(),
+    BenefitCollectionScreen(),
+    MyPageScreen(),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _initLocation();
+  }
+
+  Future<void> _initLocation() async {
+    await LocationService.instance.initialize();
+    if (mounted) {
+      setState(() {
+        _locationLabel = LocationService.instance.address;
+      });
     }
   }
+
+  Widget _buildCurrentPage() => _pages[_currentIndex];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: const AppHeader(),
+      appBar: AppHeader(location: _locationLabel),
       body: _buildCurrentPage(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

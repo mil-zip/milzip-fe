@@ -39,6 +39,7 @@ dependencies:
   geolocator: ^14.0.2 # 위치 권한
   http: ^1.2.1 # API 호출
   url_launcher: ^6.2.5 # 외부 링크 열기
+  geocoding: ^4.0.0
 
 
 

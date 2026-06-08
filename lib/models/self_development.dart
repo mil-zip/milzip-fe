@@ -20,10 +20,16 @@ class SelfDevelopment {
   });
 
   factory SelfDevelopment.fromApi(Map<String, dynamic> json) {
+    // 금융, 문화 → 복지로 통합
+    String category = json['category'] ?? '';
+    if (category == '금융' || category == '문화') {
+      category = '복지';
+    }
+
     return SelfDevelopment(
       id: json['id'] ?? 0,
       title: _clean(json['title'] ?? ''),
-      category: json['category'] ?? '',
+      category: category,
       description: _clean(json['description'] ?? ''),
       supportType: _clean(json['supportType'] ?? ''),
       applyUrl: json['applyUrl'] ?? '',

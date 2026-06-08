@@ -126,8 +126,6 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                     icon: const Icon(Icons.arrow_back_ios_new, size: 28),
                   ),
                   const Spacer(),
-                  const Icon(Icons.star_border, size: 36),
-                  const SizedBox(width: 18),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close, size: 36),
@@ -135,7 +133,6 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                 ],
               ),
             ),
-
             _QuestionBlock(
               title: '군인 할인 혜택 또는 관련 혜택을 받으셨나요?',
               options: const ['혜택 받음', '혜택 받지 못함', '일부 받음'],
@@ -145,7 +142,6 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                 _autoAdvance();
               },
             ),
-
             if (benefitAnswer != null)
               _QuestionBlock(
                 title: '대기 시간은 어떠셨나요?',
@@ -156,7 +152,6 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                   _autoAdvance();
                 },
               ),
-
             if (waitTimeAnswer != null)
               _QuestionBlock(
                 title: '방문하신 목적은 무엇인가요?',
@@ -167,7 +162,6 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                   _autoAdvance();
                 },
               ),
-
             if (purposeAnswer != null)
               _QuestionBlock(
                 title: '누구와 함께했나요?',
@@ -178,7 +172,6 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                   _autoAdvance();
                 },
               ),
-
             if (companionAnswer != null)
               Container(
                 color: AppColors.surface,
@@ -205,7 +198,6 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                   ],
                 ),
               ),
-
             if (rating > 0)
               Container(
                 color: AppColors.surface,
@@ -227,7 +219,6 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                       runSpacing: 14,
                       children: goodPointOptions.map((option) {
                         final selected = goodPoints.contains(option);
-
                         return _MilitaryChoiceChip(
                           label: option,
                           selected: selected,

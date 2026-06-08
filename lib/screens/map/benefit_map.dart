@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 
-import '../../data/store_dummy.dart';
 import '../../models/store.dart';
 import '../../models/tmo.dart';
+import '../../services/store_api.dart';
 import '../../services/tmo_api.dart';
 import '../../theme/app_colors.dart';
 import 'store_detail_screen.dart';
@@ -20,69 +20,51 @@ class BenefitMapScreen extends StatefulWidget {
 class _BenefitMapScreenState extends State<BenefitMapScreen> {
   KakaoMapController? _mapController;
   final TextEditingController _searchController = TextEditingController();
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
 
   final LatLng _fallbackCenter = LatLng(37.95745120515425, 127.3174892339337);
-
-  late final List<Store> _stores;
 
   final List<String> _categories = ['음식', '숙박', 'PC방', '서비스', 'TMO'];
 
   String _selectedCategory = '음식';
-  String _searchText = '';
 
-  Store? _selectedStore;
-  Tmo? _focusedTmo;
-  Tmo? _openedTmo;
-
+  List<Store> _stores = [];
   List<Tmo> _tmos = [];
 
-  bool _loadingTmo = false;
+  Store? _selectedStore;
+  Tmo? _selectedTmo;
+
+  LatLng? _currentLatLng;
+
+  bool _loadingStores = false;
+  bool _loadingTmos = false;
   bool _permissionDialogShown = false;
 
   bool get _isTmoMode => _selectedCategory == 'TMO';
 
-  @override
-  void initState() {
-    super.initState();
-
-    _stores = getDummyStores();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showLocationPermissionDialogIfNeeded();
-      _moveToFirstStoreInCategory('음식');
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
   List<Store> get _filteredStores {
+    final keyword = _searchController.text.trim();
+
+    if (keyword.isEmpty) return _stores;
+
     return _stores.where((store) {
-      final categoryMatch = store.categoryLabel == _selectedCategory;
-      final query = _searchText.trim().toLowerCase();
-
-      final searchMatch =
-          query.isEmpty ||
-          store.name.toLowerCase().contains(query) ||
-          store.address.toLowerCase().contains(query);
-
-      return categoryMatch && searchMatch;
+      return store.name.contains(keyword) ||
+          store.address.contains(keyword) ||
+          store.categoryLabel.contains(keyword);
     }).toList();
   }
 
   List<Marker> get _markers {
     if (_isTmoMode) {
       return _tmos.map((tmo) {
-        final selected = _focusedTmo?.id == tmo.id;
+        final selected = _selectedTmo?.id == tmo.id;
 
         return Marker(
           markerId: 'tmo_${tmo.id}',
           latLng: LatLng(tmo.latitude, tmo.longitude),
           width: selected ? 44 : 34,
-          height: selected ? 48 : 38,
+          height: selected ? 52 : 42,
         );
       }).toList();
     }
@@ -94,22 +76,41 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
         markerId: 'store_${store.id}',
         latLng: LatLng(store.latitude, store.longitude),
         width: selected ? 44 : 34,
-        height: selected ? 48 : 38,
+        height: selected ? 52 : 42,
       );
     }).toList();
   }
 
-  void _moveToFirstStoreInCategory(String category) {
-    final stores = _stores
-        .where((store) => store.categoryLabel == category)
-        .toList();
+  @override
+  void initState() {
+    super.initState();
 
-    if (stores.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _showLocationPermissionDialogIfNeeded();
+      await _loadStoresByCategory(_selectedCategory);
+    });
+  }
 
-    final first = stores.first;
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _sheetController.dispose();
+    super.dispose();
+  }
 
-    _mapController?.setCenter(LatLng(first.latitude, first.longitude));
-    _mapController?.setLevel(5);
+  String? _storeCategoryApiValue(String categoryLabel) {
+    switch (categoryLabel) {
+      case '음식':
+        return 'FOOD';
+      case '숙박':
+        return 'ACCOMMODATION';
+      case 'PC방':
+        return 'ETC';
+      case '서비스':
+        return 'ETC';
+      default:
+        return null;
+    }
   }
 
   Future<void> _showLocationPermissionDialogIfNeeded() async {
@@ -158,13 +159,13 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
                     _PermissionIllustration(
                       icon: Icons.location_on,
                       label: '정확한 위치',
-                      color: AppColors.primaryLight,
+                      color: AppColors.primaryAccent,
                     ),
                     SizedBox(width: 26),
                     _PermissionIllustration(
                       icon: Icons.map_outlined,
                       label: '대략적인 위치',
-                      color: AppColors.secondary,
+                      color: AppColors.secondaryDark,
                     ),
                   ],
                 ),
@@ -198,39 +199,16 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     );
   }
 
-  Future<LatLng> _getCurrentOrFallbackLatLng() async {
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-
-    if (!serviceEnabled) return _fallbackCenter;
-
-    var permission = await Geolocator.checkPermission();
-
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      return _fallbackCenter;
-    }
-
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-    );
-
-    return LatLng(position.latitude, position.longitude);
-  }
-
   Future<void> _requestLocationPermission() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
     if (!serviceEnabled) {
-      _showSnackBar('기기 위치 서비스가 꺼져 있어 기본 위치로 이동합니다.');
+      _showSnackBar('기기 위치 서비스가 꺼져 있습니다.');
       _moveToFallbackLocation();
       return;
     }
 
-    var permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
 
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -238,7 +216,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
 
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      _showSnackBar('위치 권한이 허용되지 않아 기본 위치로 이동합니다.');
+      _showSnackBar('위치 권한이 허용되지 않았습니다.');
       _moveToFallbackLocation();
       return;
     }
@@ -251,29 +229,37 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
 
-    final currentLatLng = LatLng(position.latitude, position.longitude);
+    final latLng = LatLng(position.latitude, position.longitude);
 
-    _mapController?.setCenter(currentLatLng);
-    _mapController?.setLevel(4);
+    _currentLatLng = latLng;
+    _mapController?.setCenter(latLng);
+    _mapController?.setLevel(5);
   }
 
   void _moveToFallbackLocation() {
+    _currentLatLng = _fallbackCenter;
     _mapController?.setCenter(_fallbackCenter);
     _mapController?.setLevel(4);
   }
 
-  Future<void> _loadTmoList() async {
+  LatLng get _requestCenter => _currentLatLng ?? _fallbackCenter;
+
+  Future<void> _loadStoresByCategory(String categoryLabel) async {
+    if (categoryLabel == 'TMO') return;
+
     setState(() {
-      _loadingTmo = true;
+      _loadingStores = true;
       _selectedStore = null;
-      _focusedTmo = null;
-      _openedTmo = null;
+      _selectedTmo = null;
     });
 
     try {
-      final center = await _getCurrentOrFallbackLatLng();
+      final center = _requestCenter;
 
-      final result = await TmoApi.getList(
+      final stores = await StoreApi.getList(
+        page: 0,
+        size: 50,
+        category: _storeCategoryApiValue(categoryLabel),
         lat: center.latitude,
         lng: center.longitude,
       );
@@ -281,14 +267,51 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       if (!mounted) return;
 
       setState(() {
-        _tmos = result;
+        _stores = stores;
       });
 
-      if (_tmos.isNotEmpty) {
-        final first = _tmos.first;
-
+      if (stores.isNotEmpty) {
+        final first = stores.first;
         _mapController?.setCenter(LatLng(first.latitude, first.longitude));
-        _mapController?.setLevel(7);
+        _mapController?.setLevel(4);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      _showSnackBar('매장 정보를 불러오지 못했습니다.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loadingStores = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadTmoList() async {
+    setState(() {
+      _loadingTmos = true;
+      _selectedStore = null;
+      _selectedTmo = null;
+    });
+
+    try {
+      final center = _requestCenter;
+
+      final tmos = await TmoApi.getList(
+        lat: center.latitude,
+        lng: center.longitude,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _tmos = tmos;
+      });
+
+      if (tmos.isNotEmpty) {
+        final first = tmos.first;
+        _mapController?.setCenter(LatLng(first.latitude, first.longitude));
+        _mapController?.setLevel(6);
       }
     } catch (_) {
       if (!mounted) return;
@@ -296,25 +319,25 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _loadingTmo = false;
+          _loadingTmos = false;
         });
       }
     }
   }
 
-  void _runSearch(String value) {
-    setState(() {
-      _searchText = value.trim();
-    });
+  Future<void> _runSearch() async {
+    final keyword = _searchController.text.trim();
+
+    if (keyword.isEmpty) {
+      _showSnackBar('검색어를 입력해주세요.');
+      return;
+    }
 
     if (_isTmoMode) {
-      if (_searchText.isEmpty) return;
-
-      final query = _searchText.toLowerCase();
-
       final results = _tmos.where((tmo) {
-        return tmo.name.toLowerCase().contains(query) ||
-            tmo.address.toLowerCase().contains(query);
+        return tmo.name.contains(keyword) ||
+            tmo.address.contains(keyword) ||
+            tmo.locationDescription.contains(keyword);
       }).toList();
 
       if (results.isEmpty) {
@@ -325,8 +348,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       final target = results.first;
 
       setState(() {
-        _focusedTmo = target;
-        _openedTmo = null;
+        _selectedTmo = target;
       });
 
       _mapController?.setCenter(LatLng(target.latitude, target.longitude));
@@ -334,65 +356,93 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       return;
     }
 
-    if (_filteredStores.isEmpty) {
+    var results = _filteredStores;
+
+    if (results.isEmpty) {
+      setState(() {
+        _loadingStores = true;
+        _selectedStore = null;
+      });
+
+      try {
+        final center = _requestCenter;
+
+        results = await StoreApi.searchByKeyword(
+          keyword: keyword,
+          category: _storeCategoryApiValue(_selectedCategory),
+          lat: center.latitude,
+          lng: center.longitude,
+        );
+
+        if (!mounted) return;
+
+        if (results.isNotEmpty) {
+          setState(() {
+            final existingIds = _stores.map((store) => store.id).toSet();
+            final newStores = results
+                .where((store) => !existingIds.contains(store.id))
+                .toList();
+
+            _stores = [...results, ...newStores, ..._stores];
+          });
+        }
+      } catch (_) {
+        if (!mounted) return;
+        _showSnackBar('검색 중 오류가 발생했습니다.');
+        return;
+      } finally {
+        if (mounted) {
+          setState(() {
+            _loadingStores = false;
+          });
+        }
+      }
+    }
+
+    if (results.isEmpty) {
       _showSnackBar('검색 결과가 없습니다.');
       return;
     }
 
-    final target = _filteredStores.first;
+    final target = results.first;
 
     setState(() {
       _selectedStore = target;
-      _focusedTmo = null;
-      _openedTmo = null;
+      _selectedTmo = null;
     });
 
     _mapController?.setCenter(LatLng(target.latitude, target.longitude));
-    _mapController?.setLevel(5);
+    _mapController?.setLevel(4);
   }
 
-  void _selectMarkerById(String markerId) {
+  void _onMarkerTap(String markerId) {
     if (markerId.startsWith('tmo_')) {
       final id = int.tryParse(markerId.replaceFirst('tmo_', ''));
-
       if (id == null) return;
 
-      final matched = _tmos.where((tmo) => tmo.id == id).toList();
-
-      if (matched.isEmpty) return;
-
-      final selected = matched.first;
+      final tmo = _tmos.firstWhere((item) => item.id == id);
 
       setState(() {
-        _focusedTmo = selected;
-        _openedTmo = selected;
+        _selectedTmo = tmo;
         _selectedStore = null;
       });
 
-      _mapController?.setCenter(LatLng(selected.latitude, selected.longitude));
-      _mapController?.setLevel(5);
+      _mapController?.setCenter(LatLng(tmo.latitude, tmo.longitude));
       return;
     }
 
     if (markerId.startsWith('store_')) {
       final id = int.tryParse(markerId.replaceFirst('store_', ''));
-
       if (id == null) return;
 
-      final matched = _stores.where((store) => store.id == id).toList();
-
-      if (matched.isEmpty) return;
-
-      final selected = matched.first;
+      final store = _stores.firstWhere((item) => item.id == id);
 
       setState(() {
-        _selectedStore = selected;
-        _focusedTmo = null;
-        _openedTmo = null;
+        _selectedStore = store;
+        _selectedTmo = null;
       });
 
-      _mapController?.setCenter(LatLng(selected.latitude, selected.longitude));
-      _mapController?.setLevel(5);
+      _mapController?.setCenter(LatLng(store.latitude, store.longitude));
     }
   }
 
@@ -411,30 +461,51 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     );
   }
 
+  Future<void> _handleCategorySelected(String category) async {
+    setState(() {
+      _selectedCategory = category;
+      _searchController.clear();
+      _selectedStore = null;
+      _selectedTmo = null;
+    });
+
+    if (category == 'TMO') {
+      await _loadTmoList();
+    } else {
+      await _loadStoresByCategory(category);
+    }
+  }
+
+  Future<void> _moveToMyLocationAndReload() async {
+    await _requestLocationPermission();
+
+    if (_isTmoMode) {
+      await _loadTmoList();
+    } else {
+      await _loadStoresByCategory(_selectedCategory);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final showTmoPanel = _isTmoMode && _tmos.isNotEmpty;
+    final loading = _loadingStores || _loadingTmos;
 
     return Stack(
       children: [
         KakaoMap(
           center: _fallbackCenter,
           currentLevel: 5,
+          markers: _markers,
           zoomControl: true,
           mapTypeControl: false,
-          markers: _markers,
           onMapCreated: (controller) {
             _mapController = controller;
-
-            if (!_isTmoMode) {
-              _moveToFirstStoreInCategory(_selectedCategory);
-            }
+            _mapController?.setCenter(_requestCenter);
           },
           onMarkerTap: (markerId, latLng, zoomLevel) {
-            _selectMarkerById(markerId);
+            _onMarkerTap(markerId);
           },
         ),
-
         Positioned(
           top: 22,
           left: 24,
@@ -443,84 +514,41 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
             children: [
               _MapSearchField(
                 controller: _searchController,
-                onSubmitted: _runSearch,
+                onSubmitted: (_) => _runSearch(),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 18),
               _CategoryChipBar(
                 categories: _categories,
                 selectedCategory: _selectedCategory,
-                onSelected: (category) async {
-                  setState(() {
-                    _selectedCategory = category;
-                    _selectedStore = null;
-                    _focusedTmo = null;
-                    _openedTmo = null;
-                    _searchText = '';
-                    _searchController.clear();
-                  });
-
-                  if (category == 'TMO') {
-                    await _loadTmoList();
-                  } else {
-                    _moveToFirstStoreInCategory(category);
-                  }
-                },
+                onSelected: _handleCategorySelected,
               ),
             ],
           ),
         ),
-
-        if (_loadingTmo)
-          Positioned.fill(
-            child: Container(
-              color: Colors.white.withOpacity(0.45),
-              child: const Center(
-                child: CircularProgressIndicator(color: AppColors.primary2),
-              ),
+        if (loading)
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LinearProgressIndicator(
+              minHeight: 3,
+              backgroundColor: Colors.transparent,
+              color: AppColors.primaryAccent,
             ),
           ),
-
-        if (_openedTmo != null)
-          Positioned(
-            top: 158,
-            left: 28,
-            right: 28,
-            child: _TmoInfoCard(
-              tmo: _openedTmo!,
-              onClose: () {
-                setState(() {
-                  _openedTmo = null;
-                });
-              },
-              onDetail: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => TmoDetailScreen(tmo: _openedTmo!),
-                  ),
-                );
-              },
-            ),
-          ),
-
         Positioned(
           right: 18,
-          bottom: showTmoPanel
-              ? 145
-              : _selectedStore == null
-              ? 24
-              : 210,
+          bottom: _isTmoMode ? 270 : 24,
           child: FloatingActionButton.small(
             heroTag: 'current_location',
             backgroundColor: Colors.white,
-            foregroundColor: AppColors.primary1,
+            foregroundColor: AppColors.primary,
             elevation: 3,
-            onPressed: _requestLocationPermission,
+            onPressed: _moveToMyLocationAndReload,
             child: const Icon(Icons.my_location_outlined),
           ),
         ),
-
-        if (_selectedStore != null)
+        if (_selectedStore != null && !_isTmoMode)
           _StoreBottomSheet(
             store: _selectedStore!,
             onClose: () {
@@ -528,7 +556,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
                 _selectedStore = null;
               });
             },
-            onDetail: () {
+            onDetailTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -537,19 +565,46 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
               );
             },
           ),
-
-        if (showTmoPanel)
+        if (_selectedTmo != null)
+          Positioned(
+            left: 22,
+            right: 22,
+            top: 178,
+            child: _TmoInfoCard(
+              tmo: _selectedTmo!,
+              onClose: () {
+                setState(() {
+                  _selectedTmo = null;
+                });
+              },
+              onDetailTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TmoDetailScreen(tmo: _selectedTmo!),
+                  ),
+                );
+              },
+            ),
+          ),
+        if (_isTmoMode)
           _TmoListPanel(
+            controller: _sheetController,
             tmos: _tmos,
-            focusedTmo: _focusedTmo,
-            onTap: (tmo) {
+            selectedTmo: _selectedTmo,
+            onTapTmo: (tmo) {
               setState(() {
-                _focusedTmo = tmo;
-                _openedTmo = null;
+                _selectedTmo = null;
               });
 
               _mapController?.setCenter(LatLng(tmo.latitude, tmo.longitude));
               _mapController?.setLevel(5);
+            },
+            onOpenDetail: (tmo) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => TmoDetailScreen(tmo: tmo)),
+              );
             },
           ),
       ],
@@ -565,29 +620,38 @@ class _MapSearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      textInputAction: TextInputAction.search,
-      onSubmitted: onSubmitted,
-      decoration: InputDecoration(
-        hintText: '검색하기',
-        prefixIcon: const Icon(Icons.search, color: AppColors.primary1),
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.94),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.primary1, width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.primary2, width: 2),
-        ),
+    return Container(
+      height: 64,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.96),
+        borderRadius: BorderRadius.circular(32),
       ),
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textMain,
+      child: TextField(
+        controller: controller,
+        textInputAction: TextInputAction.search,
+        onSubmitted: onSubmitted,
+        decoration: const InputDecoration(
+          hintText: '검색하기',
+          hintStyle: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSub,
+          ),
+          prefixIcon: Padding(
+            padding: EdgeInsets.only(left: 18, right: 10),
+            child: Icon(Icons.search, color: AppColors.primaryAccent, size: 30),
+          ),
+          prefixIconConstraints: BoxConstraints(minWidth: 64),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(vertical: 19),
+        ),
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: AppColors.textMain,
+        ),
       ),
     );
   }
@@ -604,38 +668,81 @@ class _CategoryChipBar extends StatelessWidget {
     required this.onSelected,
   });
 
+  _CategoryChipData _dataFor(String category) {
+    switch (category) {
+      case '음식':
+        return const _CategoryChipData(
+          icon: Icons.restaurant_menu,
+          label: '음식',
+        );
+      case '숙박':
+        return const _CategoryChipData(icon: Icons.hotel_outlined, label: '숙박');
+      case 'PC방':
+        return const _CategoryChipData(
+          icon: Icons.desktop_windows_outlined,
+          label: 'PC방',
+        );
+      case '서비스':
+        return const _CategoryChipData(
+          icon: Icons.local_cafe_outlined,
+          label: '서비스',
+        );
+      case 'TMO':
+        return const _CategoryChipData(
+          icon: Icons.train_outlined,
+          label: 'TMO',
+        );
+      default:
+        return _CategoryChipData(icon: Icons.circle_outlined, label: category);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 46,
+      height: 54,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           final category = categories[index];
           final selected = selectedCategory == category;
+          final data = _dataFor(category);
 
-          return GestureDetector(
-            onTap: () => onSelected(category),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: selected ? AppColors.primary2 : Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: selected ? AppColors.pressed : AppColors.primary2,
-                  width: 2,
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => onSelected(category),
+              borderRadius: BorderRadius.circular(999),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.primary2 : Colors.white,
+                  borderRadius: BorderRadius.circular(999),
                 ),
-              ),
-              child: Text(
-                category,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: selected ? Colors.white : AppColors.primary2,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      data.icon,
+                      size: 21,
+                      color: selected ? Colors.white : AppColors.primaryAccent,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      data.label,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: selected
+                            ? Colors.white
+                            : AppColors.primaryAccent,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -646,31 +753,297 @@ class _CategoryChipBar extends StatelessWidget {
   }
 }
 
+class _CategoryChipData {
+  final IconData icon;
+  final String label;
+
+  const _CategoryChipData({required this.icon, required this.label});
+}
+
+class _StoreBottomSheet extends StatefulWidget {
+  final Store store;
+  final VoidCallback onClose;
+  final VoidCallback onDetailTap;
+
+  const _StoreBottomSheet({
+    required this.store,
+    required this.onClose,
+    required this.onDetailTap,
+  });
+
+  @override
+  State<_StoreBottomSheet> createState() => _StoreBottomSheetState();
+}
+
+class _StoreBottomSheetState extends State<_StoreBottomSheet> {
+  bool _openedDetail = false;
+
+  Store get store => widget.store;
+
+  bool get _hasBusinessHours {
+    return store.openTime != null && store.closeTime != null;
+  }
+
+  bool get _isOpenNow {
+    if (!_hasBusinessHours) return false;
+
+    final now = DateTime.now();
+    final currentMinutes = now.hour * 60 + now.minute;
+
+    final open = _parseTime(store.openTime!);
+    final close = _parseTime(store.closeTime!);
+
+    if (open == null || close == null) return false;
+
+    final openMinutes = open.hour * 60 + open.minute;
+    final closeMinutes = close.hour * 60 + close.minute;
+
+    if (closeMinutes < openMinutes) {
+      return currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
+    }
+
+    return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+  }
+
+  String get _businessStatusLabel {
+    if (!_hasBusinessHours) return '운영 확인';
+    return _isOpenNow ? '영업 중' : '영업 종료';
+  }
+
+  Color get _businessStatusBackground {
+    if (!_hasBusinessHours) return const Color(0xFFF1F1F1);
+    return _isOpenNow ? AppColors.badge : const Color(0xFFF1F1F1);
+  }
+
+  Color get _businessStatusTextColor {
+    if (!_hasBusinessHours) return AppColors.textSub;
+    return _isOpenNow ? AppColors.badgeText : AppColors.textSub;
+  }
+
+  ({int hour, int minute})? _parseTime(String value) {
+    final parts = value.split(':');
+
+    if (parts.length < 2) return null;
+
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+
+    if (hour == null || minute == null) return null;
+
+    return (hour: hour, minute: minute);
+  }
+
+  void _openDetailFromDrag() {
+    if (_openedDetail) return;
+
+    _openedDetail = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        widget.onDetailTap();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<DraggableScrollableNotification>(
+      onNotification: (notification) {
+        if (notification.extent >= 0.82) {
+          _openDetailFromDrag();
+        }
+
+        return false;
+      },
+      child: DraggableScrollableSheet(
+        minChildSize: 0.24,
+        initialChildSize: 0.38,
+        maxChildSize: 0.86,
+        snap: true,
+        snapSizes: const [0.24, 0.38, 0.86],
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x22000000),
+                  blurRadius: 16,
+                  offset: Offset(0, -4),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                children: [
+                  Center(
+                    child: Container(
+                      width: 54,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD4D4D4),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          store.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textMain,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _BusinessStatusBadge(
+                        label: _businessStatusLabel,
+                        backgroundColor: _businessStatusBackground,
+                        textColor: _businessStatusTextColor,
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        onPressed: widget.onClose,
+                        icon: const Icon(Icons.close, size: 28),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.verified_user_outlined,
+                        color: AppColors.primaryAccent,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          store.mainBenefitDescription,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryAccent,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _hasBusinessHours
+                        ? '현재 $_businessStatusLabel · ${store.closeTimeLabel}'
+                        : '운영 시간 확인 필요',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSub,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    store.distanceLabel,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textSub,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: widget.onDetailTap,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        '상세 보기',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BusinessStatusBadge extends StatelessWidget {
+  final String label;
+  final Color backgroundColor;
+  final Color textColor;
+
+  const _BusinessStatusBadge({
+    required this.label,
+    required this.backgroundColor,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+}
+
 class _TmoInfoCard extends StatelessWidget {
   final Tmo tmo;
   final VoidCallback onClose;
-  final VoidCallback onDetail;
+  final VoidCallback onDetailTap;
 
   const _TmoInfoCard({
     required this.tmo,
     required this.onClose,
-    required this.onDetail,
+    required this.onDetailTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      elevation: 8,
       color: Colors.white,
       borderRadius: BorderRadius.circular(18),
+      elevation: 8,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          color: Colors.white,
-        ),
+        padding: const EdgeInsets.fromLTRB(22, 18, 16, 18),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18)),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
@@ -679,34 +1052,41 @@ class _TmoInfoCard extends StatelessWidget {
                     tmo.name,
                     style: const TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textMain,
                     ),
                   ),
                 ),
-                _TmoStatusBadge(isOpen: _isTmoOpenNow(tmo)),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: onClose,
-                  child: const Icon(
-                    Icons.close,
-                    size: 24,
-                    color: AppColors.textSub,
-                  ),
+                _TmoStatusBadge(tmo: tmo),
+                IconButton(
+                  onPressed: onClose,
+                  icon: const Icon(Icons.close, size: 24),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
-            _TmoInfoLine(label: '운영 시간', value: _todayHours(tmo)),
-            const SizedBox(height: 10),
-            _TmoInfoLine(
-              label: '현재 위치와의 거리',
-              value: _formatDistance(tmo.distanceKm),
+            const SizedBox(height: 14),
+            _InfoRow(label: '운영 시간', value: tmo.todayHours),
+            _InfoRow(label: '현재 위치와의 거리', value: tmo.distanceLabel),
+            _InfoRow(label: '전화번호', value: tmo.phoneLabel),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: onDetailTap,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.surfaceSoft,
+                  foregroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  '상세 보기',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ),
             ),
-            const SizedBox(height: 10),
-            _TmoInfoLine(label: '전화번호', value: tmo.phone ?? '전화번호 없음'),
-            const SizedBox(height: 18),
-            _TmoDetailButton(onTap: onDetail),
           ],
         ),
       ),
@@ -714,121 +1094,34 @@ class _TmoInfoCard extends StatelessWidget {
   }
 }
 
-class _TmoStatusBadge extends StatelessWidget {
-  final bool isOpen;
-
-  const _TmoStatusBadge({required this.isOpen});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-      decoration: BoxDecoration(
-        color: isOpen ? AppColors.badge : const Color(0xFFF1F1F1),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        isOpen ? '운영 중' : '운영 종료',
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-          color: isOpen ? AppColors.primary2 : AppColors.textSub,
-        ),
-      ),
-    );
-  }
-}
-
-class _TmoInfoLine extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _TmoInfoLine({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 92,
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              height: 1.35,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textSub,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              height: 1.35,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textMain,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _TmoDetailButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _TmoDetailButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: OutlinedButton(
-        onPressed: onTap,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary1,
-          side: const BorderSide(color: AppColors.border),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: const Text(
-          '상세 보기',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-        ),
-      ),
-    );
-  }
-}
-
 class _TmoListPanel extends StatelessWidget {
+  final DraggableScrollableController controller;
   final List<Tmo> tmos;
-  final Tmo? focusedTmo;
-  final ValueChanged<Tmo> onTap;
+  final Tmo? selectedTmo;
+  final ValueChanged<Tmo> onTapTmo;
+  final ValueChanged<Tmo> onOpenDetail;
 
   const _TmoListPanel({
+    required this.controller,
     required this.tmos,
-    required this.focusedTmo,
-    required this.onTap,
+    required this.selectedTmo,
+    required this.onTapTmo,
+    required this.onOpenDetail,
   });
 
-  static const double _minSize = 0.14;
-  static const double _initialSize = 0.34;
-  static const double _maxSize = 0.88;
+  String _displayTmoName(Tmo tmo) {
+    return tmo.name.replaceAll(' TMO', '').trim();
+  }
 
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      initialChildSize: _initialSize,
-      minChildSize: _minSize,
-      maxChildSize: _maxSize,
+      controller: controller,
+      minChildSize: 0.16,
+      initialChildSize: 0.38,
+      maxChildSize: 0.86,
       snap: true,
-      snapSizes: const [_minSize, _initialSize, _maxSize],
+      snapSizes: const [0.16, 0.38, 0.86],
       builder: (context, scrollController) {
         return Container(
           decoration: const BoxDecoration(
@@ -836,78 +1129,77 @@ class _TmoListPanel extends StatelessWidget {
             borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
             boxShadow: [
               BoxShadow(
-                color: Color(0x1A000000),
-                blurRadius: 18,
+                color: Color(0x22000000),
+                blurRadius: 16,
                 offset: Offset(0, -4),
               ),
             ],
           ),
-          child: CustomScrollView(
+          child: ListView(
             controller: scrollController,
-            physics: const ClampingScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 10),
-                    Container(
-                      width: 46,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD0D0D0),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-                      child: Row(
-                        children: const [
-                          Expanded(
-                            child: Text(
-                              'TMO 목록',
-                              style: TextStyle(
-                                fontSize: 20,
-                                color: AppColors.textMain,
-                              ),
-                            ),
-                          ),
-                          Icon(Icons.tune, size: 18, color: AppColors.textSub),
-                          SizedBox(width: 4),
-                          Text(
-                            '거리순',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSub,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+            children: [
+              Center(
+                child: Container(
+                  width: 54,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD4D4D4),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
               ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 96),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    if (index.isOdd) {
-                      return const SizedBox(height: 8);
-                    }
-
-                    final itemIndex = index ~/ 2;
-                    final tmo = tmos[itemIndex];
-                    final selected = focusedTmo?.id == tmo.id;
-
-                    return _TmoListTile(
-                      tmo: tmo,
-                      selected: selected,
-                      onTap: () => onTap(tmo),
-                    );
-                  }, childCount: tmos.isEmpty ? 0 : (tmos.length * 2) - 1),
-                ),
+              const SizedBox(height: 22),
+              const Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'TMO 목록',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textMain,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.tune, size: 18, color: AppColors.textSub),
+                  SizedBox(width: 5),
+                  Text(
+                    '거리순',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textSub,
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 14),
+              if (tmos.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 40),
+                  child: Center(
+                    child: Text(
+                      '주변 TMO 정보를 불러오는 중입니다.',
+                      style: TextStyle(
+                        color: AppColors.textSub,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                ...tmos.map((tmo) {
+                  final selected = selectedTmo?.id == tmo.id;
+
+                  return _TmoListItem(
+                    tmo: tmo,
+                    displayName: _displayTmoName(tmo),
+                    selected: selected,
+                    onTap: () => onTapTmo(tmo),
+                    onOpenDetail: () => onOpenDetail(tmo),
+                  );
+                }),
             ],
           ),
         );
@@ -916,55 +1208,55 @@ class _TmoListPanel extends StatelessWidget {
   }
 }
 
-class _TmoListTile extends StatelessWidget {
+class _TmoListItem extends StatelessWidget {
   final Tmo tmo;
+  final String displayName;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback onOpenDetail;
 
-  const _TmoListTile({
+  const _TmoListItem({
     required this.tmo,
+    required this.displayName,
     required this.selected,
     required this.onTap,
+    required this.onOpenDetail,
   });
 
   @override
   Widget build(BuildContext context) {
-    final distance = _formatDistance(tmo.distanceKm);
-
     return Material(
-      color: Colors.transparent,
+      color: selected ? AppColors.surfaceSoft : Colors.white,
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? AppColors.surfaceSoft : Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected ? AppColors.border : Colors.transparent,
-            ),
+            border: selected
+                ? Border.all(color: AppColors.border)
+                : Border.all(color: Colors.transparent),
           ),
           child: Row(
             children: [
               Icon(
                 Icons.location_on,
-                size: 31,
                 color: selected
-                    ? AppColors.primaryLight
+                    ? AppColors.primaryAccent
                     : const Color(0xFFB8B8B8),
+                size: 30,
               ),
               const SizedBox(width: 14),
               SizedBox(
-                width: 64,
+                width: 58,
                 child: Text(
-                  tmo.name.replaceAll(' TMO', ''),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  displayName,
                   style: const TextStyle(
                     fontSize: 17,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.textMain,
                   ),
                 ),
@@ -975,18 +1267,18 @@ class _TmoListTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '현재 위치와의 거리 $distance',
+                      '현재 위치와의 거리 ${tmo.distanceLabel}',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         color: selected
-                            ? AppColors.primary2
+                            ? AppColors.primaryAccent
                             : AppColors.textMain,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${_todayHours(tmo)} · ${tmo.phone ?? '전화번호 없음'}',
+                      '${tmo.todayHours} · ${tmo.phoneLabel}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -998,7 +1290,10 @@ class _TmoListTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: AppColors.textMain),
+              IconButton(
+                onPressed: onOpenDetail,
+                icon: const Icon(Icons.chevron_right, size: 28),
+              ),
             ],
           ),
         ),
@@ -1007,150 +1302,68 @@ class _TmoListTile extends StatelessWidget {
   }
 }
 
-class _StoreBottomSheet extends StatelessWidget {
-  final Store store;
-  final VoidCallback onClose;
-  final VoidCallback onDetail;
+class _TmoStatusBadge extends StatelessWidget {
+  final Tmo tmo;
 
-  const _StoreBottomSheet({
-    required this.store,
-    required this.onClose,
-    required this.onDetail,
-  });
+  const _TmoStatusBadge({required this.tmo});
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 0,
-      child: GestureDetector(
-        onVerticalDragEnd: (details) {
-          if ((details.primaryVelocity ?? 0) < -300) {
-            onDetail();
-          }
-        },
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(28, 12, 28, 28),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            boxShadow: [
-              BoxShadow(
-                color: Color(0x1A000000),
-                blurRadius: 18,
-                offset: Offset(0, -4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 48,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD0D0D0),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              const SizedBox(height: 28),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      store.name,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textMain,
-                      ),
-                    ),
-                  ),
-                  const _MapRecommendBadge(),
-                  const SizedBox(width: 12),
-                  GestureDetector(
-                    onTap: onClose,
-                    child: const Icon(
-                      Icons.close,
-                      size: 28,
-                      color: AppColors.textSub,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.verified_user_outlined,
-                    size: 22,
-                    color: AppColors.primaryLight,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    store.benefitDescription,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primaryLight,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '현재 영업 중 · ${store.closeTime}에 영업 종료',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textSub,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '1.2km',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textSub,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+    final isOpen = tmo.isOpenNow;
+    final hasHours = tmo.hasTodayOperatingHours;
 
-class _MapRecommendBadge extends StatelessWidget {
-  const _MapRecommendBadge();
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.badge,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: AppColors.primaryLight),
+        color: hasHours && isOpen ? AppColors.badge : const Color(0xFFF1F1F1),
+        borderRadius: BorderRadius.circular(999),
       ),
-      child: const Text(
-        '밀집추천',
+      child: Text(
+        tmo.operatingStatusLabel,
         style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-          color: AppColors.primary1,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: hasHours && isOpen ? AppColors.badgeText : AppColors.textSub,
         ),
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 92,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSub,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textMain,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1218,80 +1431,4 @@ class _PermissionButton extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatDistance(double distanceKm) {
-  if (distanceKm < 1) {
-    return '${(distanceKm * 1000).round()}m';
-  }
-
-  if (distanceKm < 10) {
-    return '${distanceKm.toStringAsFixed(1)}km';
-  }
-
-  return '${distanceKm.round()}km';
-}
-
-String _todayHours(Tmo tmo) {
-  final now = DateTime.now();
-
-  final isWeekend =
-      now.weekday == DateTime.saturday || now.weekday == DateTime.sunday;
-
-  final start = isWeekend ? tmo.weekendStartTime : tmo.weekdayStartTime;
-  final end = isWeekend ? tmo.weekendEndTime : tmo.weekdayEndTime;
-
-  if (start == null || end == null) {
-    return tmo.mobile ? '출장형 운영' : '운영시간 없음';
-  }
-
-  return '$start ~ $end';
-}
-
-bool _isTmoOpenNow(Tmo tmo) {
-  final now = DateTime.now();
-
-  final isWeekend =
-      now.weekday == DateTime.saturday || now.weekday == DateTime.sunday;
-
-  final startRaw = isWeekend ? tmo.weekendStartTime : tmo.weekdayStartTime;
-  final endRaw = isWeekend ? tmo.weekendEndTime : tmo.weekdayEndTime;
-
-  if (startRaw == null || endRaw == null) {
-    return false;
-  }
-
-  final start = _parseTime(startRaw);
-  final end = _parseTime(endRaw);
-
-  if (start == null || end == null) {
-    return false;
-  }
-
-  final nowMinutes = now.hour * 60 + now.minute;
-  final startMinutes = start.hour * 60 + start.minute;
-  final endMinutes = end.hour * 60 + end.minute;
-
-  if (endMinutes < startMinutes) {
-    return nowMinutes >= startMinutes || nowMinutes <= endMinutes;
-  }
-
-  return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
-}
-
-TimeOfDay? _parseTime(String value) {
-  final parts = value.split(':');
-
-  if (parts.length < 2) {
-    return null;
-  }
-
-  final hour = int.tryParse(parts[0]);
-  final minute = int.tryParse(parts[1]);
-
-  if (hour == null || minute == null) {
-    return null;
-  }
-
-  return TimeOfDay(hour: hour, minute: minute);
 }

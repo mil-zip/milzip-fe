@@ -44,12 +44,6 @@ class ReviewStartScreen extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  const Icon(
-                    Icons.star_border,
-                    size: 36,
-                    color: AppColors.textMain,
-                  ),
-                  const SizedBox(width: 18),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(

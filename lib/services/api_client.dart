@@ -1,22 +1,23 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:milzip/main.dart';
+import 'package:milzip/screens/login_screen.dart';
+import 'package:milzip/services/auth_service.dart';
 
 /// API 공통 설정 — baseUrl, 공통 헤더, 응답 파싱
 class ApiClient {
   static const String baseUrl = 'https://api.milzip.site';
 
-  static const Map<String, String> _headers = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
-
-  static http.Client _newClient() {
-    final inner = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 10)
-      ..badCertificateCallback = (cert, host, port) => true;
-    return http.Client()..hashCode; // fallback to default if IOClient unavailable
+  static Future<Map<String, String>> _headers() async {
+    final token = await AuthService.getAccessToken();
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
   }
 
   /// GET 요청 — 실패 시 최대 3회 재시도
@@ -27,13 +28,24 @@ class ApiClient {
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         final response = await http
-            .get(uri, headers: _headers)
+            .get(uri, headers: await _headers())
             .timeout(const Duration(seconds: 12));
 
         if (response.statusCode == 200) {
           final body = jsonDecode(response.body) as Map<String, dynamic>;
           if (body['success'] == true) return body['data'];
           throw Exception(body['message'] ?? 'API 요청 실패');
+        } else if (response.statusCode == 401 && attempt == 1) {
+          // 토큰 만료 시 1회 갱신 후 재시도
+          try {
+            await AuthService.refreshTokens();
+          } catch (_) {
+            // 갱신 실패 → 로그인 화면으로
+            await AuthService.clearTokens();
+            _goToLogin();
+            throw Exception('세션이 만료되었습니다. 다시 로그인해 주세요.');
+          }
+          continue;
         } else {
           throw Exception('서버 오류: ${response.statusCode}');
         }
@@ -51,10 +63,17 @@ class ApiClient {
       print('[api] attempt $attempt/$maxRetries failed for $uri → $lastError');
 
       if (attempt < maxRetries) {
-        await Future.delayed(Duration(seconds: attempt)); // 1s, 2s 대기 후 재시도
+        await Future.delayed(Duration(seconds: attempt));
       }
     }
 
     throw lastError!;
+  }
+
+  static void _goToLogin() {
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 }

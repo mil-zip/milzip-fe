@@ -38,7 +38,7 @@ class ThemePark {
   /// 기존 더미 데이터용 팩토리
   factory ThemePark.fromJson(Map<String, dynamic> json) {
     return ThemePark(
-      id: json['id'],
+      id: (json['id'] as num?)?.toInt() ?? 0,
       name: json['themepark_name'],
       address: json['address'],
       latitude: (json['latitude'] as num).toDouble(),

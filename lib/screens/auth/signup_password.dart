@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:milzip/screens/auth/signup_nickname.dart'; // ← 닉네임 설정 화면
+import 'package:milzip/screens/auth/signup_nickname.dart';
+import 'package:milzip/theme/app_colors.dart';
 
 class SignupPasswordScreen extends StatefulWidget {
   final String email;
@@ -104,7 +105,7 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
   InputDecoration _buildInputDecoration(String hint, {bool hasError = false}) {
     final borderColor = hasError
         ? const Color(0xFFE24B4A)
-        : const Color(0xFFD5D7D9);
+        : AppColors.border;
 
     return InputDecoration(
       hintText: hint,
@@ -207,7 +208,7 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
                         _isPasswordVisible
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
-                        color: const Color(0xFFADB5BD),
+                        color: AppColors.border,
                         size: 20,
                       ),
                       onPressed: () {
@@ -244,7 +245,7 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
                         _isPasswordConfirmVisible
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
-                        color: const Color(0xFFADB5BD),
+                        color: AppColors.border,
                         size: 20,
                       ),
                       onPressed: () {
@@ -283,8 +284,8 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
               child: ElevatedButton(
                 onPressed: _isButtonEnabled ? _handleNext : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF96D484),
-                  disabledBackgroundColor: const Color(0xFFADB5BD),
+                  backgroundColor: AppColors.primaryAccent,
+                  disabledBackgroundColor: AppColors.border,
                   foregroundColor: Colors.white,
                   disabledForegroundColor: Colors.white,
                   elevation: 0,

@@ -1,6 +1,6 @@
 import 'api_client.dart';
 
-/// 자기계발 혜택 페이지네이션 응답
+/// 청년정책 혜택 페이지네이션 응답
 class SelfDevelopmentPage {
   final List<Map<String, dynamic>> content;
   final bool hasNext;
@@ -18,7 +18,7 @@ class SelfDevelopmentPage {
 }
 
 class SelfDevelopmentApi {
-  /// 자기계발 혜택 목록 (페이지네이션)
+  /// 청년정책 혜택 목록 (페이지네이션)
   static Future<SelfDevelopmentPage> getList({
     int page = 0,
     int size = 5,

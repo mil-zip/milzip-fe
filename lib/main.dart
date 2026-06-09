@@ -4,6 +4,9 @@ import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 
 const String kakaoJavaScriptKey = '475d290f611228d57558d105bc36862b';
 
+/// 앱 전역 네비게이터 키 — 위젯 컨텍스트 없이도 화면 이동에 사용
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -21,6 +24,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'MILZIP',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

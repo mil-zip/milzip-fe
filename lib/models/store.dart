@@ -39,7 +39,7 @@ class Store {
 
   factory Store.fromJson(Map<String, dynamic> json) {
     return Store(
-      id: json['id'],
+      id: (json['id'] as num?)?.toInt() ?? 0,
       name: json['name'],
       category: _parseCategory(json['category']),
       categoryDetail: json['category_detail'],

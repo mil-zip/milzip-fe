@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:milzip/screens/auth/signup_password.dart'; // 비밀번호 설정
+import 'package:milzip/screens/auth/signup_password.dart';
+import 'package:milzip/services/auth_service.dart';
+import 'package:milzip/theme/app_colors.dart';
 
 class SignupEmailScreen extends StatefulWidget {
   const SignupEmailScreen({super.key});
@@ -12,15 +14,11 @@ class _SignupEmailScreenState extends State<SignupEmailScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
 
-  // 인증 요청을 보냈는지 여부 (이걸로 화면 단계 구분)
   bool _isVerificationRequested = false;
-
-  // 안내 문구 (단계에 따라 바뀜)
+  bool _isLoading = false;
   String _guideText = '밀집계정으로 사용할\n이메일을 입력해 주세요.';
-
-  // 버튼 활성화 상태
-  bool _isVerifyButtonEnabled = false; // 인증요청 버튼
-  bool _isNextButtonEnabled = false; // 다음 버튼
+  bool _isVerifyButtonEnabled = false;
+  bool _isNextButtonEnabled = false;
 
   @override
   void initState() {
@@ -50,29 +48,57 @@ class _SignupEmailScreenState extends State<SignupEmailScreen> {
     });
   }
 
-  // 인증요청 버튼 클릭
-  void _handleVerificationRequest() {
-    // TODO: 실제 인증번호 발송 API 호출
-    print('인증번호 발송: ${_emailController.text}');
-
-    // 화면 단계 변경
-    setState(() {
-      _isVerificationRequested = true;
-      _guideText = '이메일로 발송된\n인증번호를 입력해 주세요.';
-    });
+  Future<void> _handleVerificationRequest() async {
+    setState(() => _isLoading = true);
+    try {
+      final email = _emailController.text.trim();
+      final available = await AuthService.checkEmailAvailability(email);
+      if (!available) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이미 사용 중인 이메일입니다.')),
+        );
+        return;
+      }
+      await AuthService.sendEmailVerification(email);
+      setState(() {
+        _isVerificationRequested = true;
+        _guideText = '이메일로 발송된\n인증번호를 입력해 주세요.';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
-  // 다음 버튼 클릭
-  void _handleNext() {
-    // TODO: 인증번호 검증 API 호출
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SignupPasswordScreen(
-          email: _emailController.text, // 이메일 전달
+  Future<void> _handleNext() async {
+    setState(() => _isLoading = true);
+    try {
+      await AuthService.verifyEmailCode(
+        _emailController.text.trim(),
+        _codeController.text.trim(),
+      );
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SignupPasswordScreen(
+            email: _emailController.text.trim(),
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   // 공통 입력 필드 데코레이션
@@ -153,12 +179,12 @@ class _SignupEmailScreenState extends State<SignupEmailScreen> {
                   const SizedBox(width: 8),
 
                   ElevatedButton(
-                    onPressed: _isVerifyButtonEnabled
+                    onPressed: (_isVerifyButtonEnabled && !_isLoading)
                         ? _handleVerificationRequest
                         : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF96D484),
-                      disabledBackgroundColor: const Color(0xFFADB5BD),
+                      backgroundColor: AppColors.primaryAccent,
+                      disabledBackgroundColor: AppColors.border,
                       foregroundColor: Colors.white,
                       disabledForegroundColor: Colors.white,
                       elevation: 0,
@@ -170,13 +196,22 @@ class _SignupEmailScreenState extends State<SignupEmailScreen> {
                         borderRadius: BorderRadius.circular(5),
                       ),
                     ),
-                    child: const Text(
-                      '인증요청',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            '인증요청',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -200,7 +235,7 @@ class _SignupEmailScreenState extends State<SignupEmailScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  border: Border.all(color: const Color(0xFFD5D7D9), width: 1),
+                  border: Border.all(color: AppColors.border, width: 1),
                   borderRadius: BorderRadius.circular(5),
                 ),
                 child: Text(
@@ -231,12 +266,12 @@ class _SignupEmailScreenState extends State<SignupEmailScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isVerificationRequested && _isNextButtonEnabled
+                onPressed: (_isVerificationRequested && _isNextButtonEnabled && !_isLoading)
                     ? _handleNext
                     : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF96D484),
-                  disabledBackgroundColor: const Color(0xFFADB5BD),
+                  backgroundColor: AppColors.primaryAccent,
+                  disabledBackgroundColor: AppColors.border,
                   foregroundColor: Colors.white,
                   disabledForegroundColor: Colors.white,
                   elevation: 0,

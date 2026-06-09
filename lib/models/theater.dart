@@ -24,7 +24,7 @@ class Theater {
 
   factory Theater.fromJson(Map<String, dynamic> json) {
     return Theater(
-      id: json['id'],
+      id: (json['id'] as num?)?.toInt() ?? 0,
       brand: json['theater_brand'],
       benefit: json['benefit'],
       requiredDocument: json['required_document'],

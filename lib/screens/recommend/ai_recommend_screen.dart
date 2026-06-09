@@ -20,11 +20,6 @@ class _AiRecommendScreenState extends State<AiRecommendScreen> {
   int _currentStep = 0;
   String? _selectedCompany;
   Set<String> _selectedCategories = {};
-  bool _useCurrentLocation = false;
-  String _freeText = '';
-  String _manualLocation = '';
-  double? _resolvedLat;
-  double? _resolvedLng;
   bool _isGeocodingLoading = false;
   bool _isResultReady = false;
 
@@ -84,10 +79,6 @@ class _AiRecommendScreenState extends State<AiRecommendScreen> {
       return;
     }
     if (_hasLocation) {
-      _useCurrentLocation = true;
-      final pos = LocationService.instance.position!;
-      _resolvedLat = pos.latitude;
-      _resolvedLng = pos.longitude;
       setState(() => _currentStep = 4);
     } else {
       setState(() => _currentStep = 3);
@@ -97,27 +88,15 @@ class _AiRecommendScreenState extends State<AiRecommendScreen> {
   Future<void> _proceedToFreeText() async {
     final text = _locationController.text.trim();
     if (text.isEmpty) {
-      // "상관없어요" — 좌표 없이 진행
-      _manualLocation = '';
-      _resolvedLat = null;
-      _resolvedLng = null;
       setState(() => _currentStep = 4);
       return;
     }
 
     setState(() => _isGeocodingLoading = true);
     try {
-      final locations = await locationFromAddress('$text, 한국');
-      if (locations.isNotEmpty) {
-        _resolvedLat = locations.first.latitude;
-        _resolvedLng = locations.first.longitude;
-        _manualLocation = text;
-      }
+      await locationFromAddress('$text, 한국');
     } catch (_) {
-      // 변환 실패해도 텍스트만 넘김
-      _resolvedLat = null;
-      _resolvedLng = null;
-      _manualLocation = text;
+      // 변환 실패해도 진행
     } finally {
       if (mounted) setState(() => _isGeocodingLoading = false);
     }
@@ -133,7 +112,6 @@ class _AiRecommendScreenState extends State<AiRecommendScreen> {
     }
 
     setState(() {
-      _freeText = _freeTextController.text;
       _isResultReady = false;
       _currentStep = 5;
     });
@@ -144,9 +122,6 @@ class _AiRecommendScreenState extends State<AiRecommendScreen> {
       _currentStep = 0;
       _selectedCompany = null;
       _selectedCategories.clear();
-      _useCurrentLocation = false;
-      _freeText = '';
-      _manualLocation = '';
       _isResultReady = false;
       _freeTextController.clear();
       _locationController.clear();
@@ -449,10 +424,7 @@ class _AiRecommendScreenState extends State<AiRecommendScreen> {
                   else if (_currentStep == 3)
                     LocationInputScreen(
                       controller: _locationController,
-                      onSkip: () {
-                        _manualLocation = '';
-                        setState(() => _currentStep = 4);
-                      },
+                      onSkip: () => setState(() => _currentStep = 4),
                     )
                   else if (_currentStep == 4)
                     FreeTextScreen(

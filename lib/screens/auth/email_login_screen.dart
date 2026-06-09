@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:milzip/screens/auth/signup_email.dart'; // 회원가입 창
-//import 'package:milzip/screens/bottom_navigator.dart'; // 메인화면 창
+import 'package:milzip/screens/auth/signup_email.dart';
 import 'package:milzip/screens/home.dart';
+import 'package:milzip/services/auth_service.dart';
+import 'package:milzip/services/user_service.dart';
+import 'package:milzip/theme/app_colors.dart';
 
 class EmailLoginScreen extends StatefulWidget {
   const EmailLoginScreen({super.key});
@@ -16,6 +18,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isButtonEnabled = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -39,13 +42,29 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
     });
   }
 
-  void _handleLogin() {
-    // TODO: 실제 로그인 API 연동
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const HomeScreen()),
-      (route) => false, // 모든 이전 화면 제거
-    );
+  Future<void> _handleLogin() async {
+    setState(() => _isLoading = true);
+    try {
+      await AuthService.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+      // 토큰 발급 직후 유저 정보 캐시 (닉네임·프로필 등)
+      await UserService.getMyInfo();
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   // 공통 입력 필드 스타일 (피그마 스펙 반영)
@@ -123,14 +142,10 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isButtonEnabled ? _handleLogin : null,
+                onPressed: (_isButtonEnabled && !_isLoading) ? _handleLogin : null,
                 style: ElevatedButton.styleFrom(
-                  // 입력 완료 후 활성화된 버튼 색상
-                  backgroundColor: const Color(0xFF96D484),
-
-                  // 입력 전 비활성화된 버튼 색상
-                  disabledBackgroundColor: const Color(0xFFADB5BD),
-
+                  backgroundColor: AppColors.primaryAccent,
+                  disabledBackgroundColor: AppColors.border,
                   foregroundColor: Colors.white,
                   disabledForegroundColor: Colors.white,
                   elevation: 0,
@@ -139,10 +154,19 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                     borderRadius: BorderRadius.circular(5),
                   ),
                 ),
-                child: const Text(
-                  '로그인',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        '로그인',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                      ),
               ),
             ),
 

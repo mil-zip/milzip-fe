@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/tmo.dart';
+import '../../services/user_service.dart';
 import '../../theme/app_colors.dart';
 import 'tmo_service_guide_screen.dart';
 
@@ -21,6 +22,20 @@ class _TmoDetailScreenState extends State<TmoDetailScreen> {
   bool _isFavorite = false;
 
   Tmo get tmo => widget.tmo;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFavorite();
+  }
+
+  Future<void> _checkFavorite() async {
+    try {
+      final list = await UserService.getTmoFavorites();
+      final ids = list.map((e) => (e['tmoId'] as num).toInt()).toSet();
+      if (mounted) setState(() => _isFavorite = ids.contains(tmo.id));
+    } catch (_) {}
+  }
 
   Future<void> _openKakaoMap(BuildContext context) async {
     final uri = Uri.parse(tmo.kakaoMapUrl);
@@ -55,15 +70,28 @@ class _TmoDetailScreenState extends State<TmoDetailScreen> {
     }
   }
 
-  void _toggleFavorite() {
-    setState(() {
-      _isFavorite = !_isFavorite;
-    });
-
-    _showSnackBar(
-      context,
-      _isFavorite ? 'TMO가 즐겨찾기에 저장되었습니다.' : 'TMO 즐겨찾기가 해제되었습니다.',
-    );
+  Future<void> _toggleFavorite() async {
+    final newState = !_isFavorite;
+    setState(() => _isFavorite = newState);
+    try {
+      if (newState) {
+        await UserService.addTmoFavorite(tmo.id);
+      } else {
+        await UserService.removeTmoFavorite(tmo.id);
+      }
+      if (mounted) {
+        _showSnackBar(
+          context,
+          newState ? 'TMO가 즐겨찾기에 저장되었습니다.' : 'TMO 즐겨찾기가 해제되었습니다.',
+        );
+      }
+    } catch (e) {
+      // 실패 시 원상복구
+      if (mounted) setState(() => _isFavorite = !newState);
+      if (mounted) {
+        _showSnackBar(context, e.toString().replaceFirst('Exception: ', ''));
+      }
+    }
   }
 
   void _showSnackBar(BuildContext context, String message) {

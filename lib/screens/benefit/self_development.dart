@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/self_development.dart';
 import '../../services/self_development_api.dart';
+import '../../services/user_service.dart';
 
 class SelfDevelopmentSection extends StatefulWidget {
   const SelfDevelopmentSection({super.key});
@@ -87,6 +88,20 @@ class _SelfDevelopmentSectionState extends State<SelfDevelopmentSection> {
 
       final all =
           result.content.map((j) => SelfDevelopment.fromApi(j)).toList();
+
+      // 저장된 혜택 ID 조회 → isBookmarked 세팅
+      Set<int> savedIds = {};
+      try {
+        final saved = await UserService.getBenefitFavorites();
+        savedIds = saved
+            .map((e) => (e['benefitId'] as num?)?.toInt())
+            .whereType<int>()
+            .toSet();
+      } catch (_) {}
+      for (final item in all) {
+        item.isBookmarked = savedIds.contains(item.id);
+      }
+
       // ignore: avoid_print
       print('[self-dev] load success count=${all.length} totalPages=${result.totalPages}');
       if (!mounted) return;
@@ -222,10 +237,22 @@ class _SelfDevelopmentSectionState extends State<SelfDevelopmentSection> {
             isExpanded: isExpanded,
             onToggle: () => _toggleExpand(item.id),
             onApply: () => _openUrl(item.applyUrl),
-            onBookmarkTap: () {
-              setState(() => item.isBookmarked = !item.isBookmarked);
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(
+            onBookmarkTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final newState = !item.isBookmarked;
+              setState(() => item.isBookmarked = newState);
+              try {
+                if (newState) {
+                  await UserService.addBenefitFavorite(item.id);
+                } else {
+                  await UserService.removeBenefitFavorite(item.id);
+                }
+              } catch (_) {
+                if (mounted) setState(() => item.isBookmarked = !newState);
+              }
+              if (!mounted) return;
+              messenger.clearSnackBars();
+              messenger.showSnackBar(
                 SnackBar(
                   content: Text(
                     item.isBookmarked

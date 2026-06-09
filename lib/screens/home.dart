@@ -8,6 +8,13 @@ import 'package:milzip/widgets/app_header.dart';
 import 'benefit/amusement_park.dart';
 import 'map/benefit_map.dart';
 
+/// 외부에서 HomeScreen 탭을 전환할 때 사용
+/// value: 탭 인덱스, data: 탭 내부에 전달할 부가 정보 (예: 혜택 카테고리)
+final homeTabNotifier = ValueNotifier<({int tab, int? subIndex})>((tab: 0, subIndex: null));
+
+/// 혜택 탭(index 3)으로 이동하면서 BenefitCollectionScreen의 카테고리도 전환
+final benefitCategoryNotifier = ValueNotifier<int>(1);
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -32,6 +39,18 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _initLocation();
+    homeTabNotifier.addListener(_onExternalTabChange);
+  }
+
+  @override
+  void dispose() {
+    homeTabNotifier.removeListener(_onExternalTabChange);
+    super.dispose();
+  }
+
+  void _onExternalTabChange() {
+    final v = homeTabNotifier.value;
+    setState(() => _currentIndex = v.tab);
   }
 
   Future<void> _initLocation() async {
@@ -92,12 +111,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _placeholder(String title) {
-    return Center(
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 18, color: AppColors.textSub),
-      ),
-    );
-  }
 }

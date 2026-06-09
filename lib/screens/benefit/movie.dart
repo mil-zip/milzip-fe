@@ -5,6 +5,7 @@ import '../../models/theater.dart';
 import '../../data/movie_dummy.dart';
 import '../../data/theater_dummy.dart';
 import '../../services/movie_api.dart';
+import '../../services/user_service.dart';
 
 class MovieSection extends StatefulWidget {
   const MovieSection({super.key});
@@ -33,7 +34,12 @@ class _MovieSectionState extends State<MovieSection> {
       final results = await Future.wait([
         MovieApi.getBoxOffice(),
         MovieApi.getCinemas(),
+        UserService.getBenefitFavorites().catchError((_) => <Map<String, dynamic>>[]),
       ]);
+      final savedIds = (results[2] as List<dynamic>)
+          .map((e) => ((e as Map<String, dynamic>)['benefitId'] as num?)?.toInt())
+          .whereType<int>()
+          .toSet();
       // ignore: avoid_print
       print('[benefit-movie] load success movies=${(results[0] as List).length} theaters=${(results[1] as List).length}');
       if (!mounted) return;
@@ -41,9 +47,11 @@ class _MovieSectionState extends State<MovieSection> {
         _movies = (results[0] as List)
             .map((j) => Movie.fromApi(j as Map<String, dynamic>))
             .toList();
-        _theaters = (results[1] as List)
-            .map((j) => Theater.fromApi(j as Map<String, dynamic>))
-            .toList();
+        _theaters = (results[1] as List).map((j) {
+          final t = Theater.fromApi(j as Map<String, dynamic>);
+          t.isBookmarked = savedIds.contains(t.id);
+          return t;
+        }).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -251,10 +259,22 @@ class _MovieSectionState extends State<MovieSection> {
         ..._theaters.map(
           (theater) => _TheaterRow(
             theater: theater,
-            onBookmarkToggle: () {
-              setState(() => theater.isBookmarked = !theater.isBookmarked);
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(
+            onBookmarkToggle: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final newState = !theater.isBookmarked;
+              setState(() => theater.isBookmarked = newState);
+              try {
+                if (newState) {
+                  await UserService.addBenefitFavorite(theater.id);
+                } else {
+                  await UserService.removeBenefitFavorite(theater.id);
+                }
+              } catch (_) {
+                if (mounted) setState(() => theater.isBookmarked = !newState);
+              }
+              if (!mounted) return;
+              messenger.clearSnackBars();
+              messenger.showSnackBar(
                 SnackBar(
                   content: Text(
                     theater.isBookmarked

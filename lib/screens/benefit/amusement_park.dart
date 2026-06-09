@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../models/theme_park.dart';
 import '../../data/theme_park_dummy.dart';
 import '../../services/amusement_park_api.dart';
+import '../../services/user_service.dart';
+import '../home.dart' show benefitCategoryNotifier;
 import 'movie.dart';
 import 'self_development.dart';
 
@@ -19,7 +21,8 @@ final List<BenefitCategory> categories = [
 ];
 
 class BenefitCollectionScreen extends StatefulWidget {
-  const BenefitCollectionScreen({super.key});
+  final int initialCategory;
+  const BenefitCollectionScreen({super.key, this.initialCategory = 1});
 
   @override
   State<BenefitCollectionScreen> createState() =>
@@ -27,7 +30,7 @@ class BenefitCollectionScreen extends StatefulWidget {
 }
 
 class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
-  int _selectedCategoryIndex = 1;
+  late int _selectedCategoryIndex;
   List<ThemePark> _themeParks = [];
   bool _isLoading = true;
   String? _error;
@@ -35,9 +38,21 @@ class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedCategoryIndex = widget.initialCategory;
     // ignore: avoid_print
     print('[benefit] init selected=$_selectedCategoryIndex');
     _loadAmusementParks();
+    benefitCategoryNotifier.addListener(_onCategoryChange);
+  }
+
+  @override
+  void dispose() {
+    benefitCategoryNotifier.removeListener(_onCategoryChange);
+    super.dispose();
+  }
+
+  void _onCategoryChange() {
+    setState(() => _selectedCategoryIndex = benefitCategoryNotifier.value);
   }
 
   /// React의 useEffect + fetch와 동일한 역할
@@ -45,16 +60,25 @@ class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
     // ignore: avoid_print
     print('[benefit-amusement] load start');
     try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-      final data = await AmusementParkApi.getList();
+      setState(() { _isLoading = true; _error = null; });
+      final results = await Future.wait([
+        AmusementParkApi.getList(),
+        UserService.getBenefitFavorites().catchError((_) => <Map<String, dynamic>>[]),
+      ]);
+      if (!mounted) return;
+      final data = results[0] as List<dynamic>;
+      final savedIds = (results[1] as List<dynamic>)
+          .map((e) => ((e as Map<String, dynamic>)['benefitId'] as num?)?.toInt())
+          .whereType<int>()
+          .toSet();
       // ignore: avoid_print
       print('[benefit-amusement] load success count=${data.length}');
-      if (!mounted) return;
       setState(() {
-        _themeParks = data.map((json) => ThemePark.fromApi(json)).toList();
+        _themeParks = data.map((json) {
+          final park = ThemePark.fromApi(json as Map<String, dynamic>);
+          park.isBookmarked = savedIds.contains(park.id);
+          return park;
+        }).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -64,7 +88,6 @@ class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
       setState(() {
         _error = e.toString();
         _isLoading = false;
-        // 실패 시 더미 데이터 폴백
         _themeParks = getDummyThemeParks();
       });
     }
@@ -125,11 +148,20 @@ class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
                 ),
                 _ThemeParkCarousel(
                   themeParks: _themeParks,
-                  onBookmarkToggle: (id) {
-                    setState(() {
-                      final park = _themeParks.firstWhere((p) => p.id == id);
-                      park.isBookmarked = !park.isBookmarked;
-                    });
+                  onBookmarkToggle: (id) async {
+                    final park = _themeParks.firstWhere((p) => p.id == id);
+                    final newState = !park.isBookmarked;
+                    setState(() => park.isBookmarked = newState);
+                    try {
+                      if (newState) {
+                        await UserService.addBenefitFavorite(id);
+                      } else {
+                        await UserService.removeBenefitFavorite(id);
+                      }
+                    } catch (_) {
+                      // 실패 시 원상복구
+                      if (mounted) setState(() => park.isBookmarked = !newState);
+                    }
                   },
                 ),
                 const SizedBox(height: 28),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:milzip/screens/auth/signup_complete.dart';
-import 'dart:typed_data'; // ← 추가 (Uint8List 사용을 위해)
+import 'package:milzip/screens/auth/signup_military.dart';
+import 'package:milzip/services/auth_service.dart';
+import 'package:milzip/theme/app_colors.dart';
 
 class SignupNicknameScreen extends StatefulWidget {
   final String email;
@@ -20,64 +21,96 @@ class SignupNicknameScreen extends StatefulWidget {
 
 class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
   final TextEditingController _nicknameController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
   bool _isButtonEnabled = false;
-
-  // 선택된 프로필 사진 (null이면 사진 없음)
-  // 변경: 바이트 데이터로 저장 (웹/모바일 둘 다 호환)
+  bool _isLoading = false;
   Uint8List? _profileImageBytes;
 
   @override
   void initState() {
     super.initState();
     _nicknameController.addListener(_updateButtonState);
+    _nameController.addListener(_updateButtonState);
   }
 
   @override
   void dispose() {
     _nicknameController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
   void _updateButtonState() {
     setState(() {
-      _isButtonEnabled = _nicknameController.text.trim().isNotEmpty;
+      _isButtonEnabled =
+          _nicknameController.text.trim().isNotEmpty &&
+          _nameController.text.trim().isNotEmpty;
     });
   }
 
-  // 갤러리에서 사진 선택
-  // 변경: 바이트로 읽어서 저장
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-
+    final picker = ImagePicker();
     try {
-      final XFile? image = await picker.pickImage(
+      final image = await picker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 80,
       );
-
       if (image != null) {
-        // 이미지를 바이트로 읽기 (웹/모바일 둘 다 동작)
         final bytes = await image.readAsBytes();
-
-        setState(() {
-          _profileImageBytes = bytes;
-        });
+        setState(() => _profileImageBytes = bytes);
       }
+    } catch (_) {}
+  }
+
+  Future<void> _handleConfirm() async {
+    setState(() => _isLoading = true);
+    try {
+      final nickname = _nicknameController.text.trim();
+      final available = await AuthService.checkNicknameAvailability(nickname);
+      if (!available) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이미 사용 중인 닉네임입니다.')),
+        );
+        return;
+      }
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SignupMilitaryScreen(
+            email: widget.email,
+            password: widget.password,
+            nickname: nickname,
+            name: _nameController.text.trim(),
+            profileImageBytes: _profileImageBytes,
+          ),
+        ),
+      );
     } catch (e) {
-      print('이미지 선택 에러: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // 변경: 바이트 데이터 전달
-  void _handleConfirm() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SignupCompleteScreen(
-          email: widget.email,
-          nickname: _nicknameController.text,
-          profileImageBytes: _profileImageBytes,
-        ),
+  InputDecoration _buildInputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Color(0xFFADB5BD), fontSize: 14),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(5),
+        borderSide: const BorderSide(color: AppColors.border, width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(5),
+        borderSide: const BorderSide(color: AppColors.border, width: 1),
       ),
     );
   }
@@ -88,7 +121,6 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -107,8 +139,7 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
         ),
         centerTitle: true,
       ),
-
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,6 +158,19 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
 
             const SizedBox(height: 32),
 
+            // 이름 라벨
+            const Text(
+              '이름 (본명)',
+              style: TextStyle(fontSize: 13, color: Color(0xFFADB5BD)),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _nameController,
+              decoration: _buildInputDecoration('실명 입력'),
+            ),
+
+            const SizedBox(height: 20),
+
             // 닉네임 라벨 + 글자수
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -137,47 +181,15 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
                 ),
                 Text(
                   '$currentLength/20',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFFADB5BD),
-                  ),
+                  style: const TextStyle(fontSize: 13, color: Color(0xFFADB5BD)),
                 ),
               ],
             ),
-
             const SizedBox(height: 6),
-
-            // 닉네임 입력
             TextField(
               controller: _nicknameController,
               inputFormatters: [LengthLimitingTextInputFormatter(20)],
-              decoration: InputDecoration(
-                hintText: '닉네임 입력',
-                hintStyle: const TextStyle(
-                  color: Color(0xFFADB5BD),
-                  fontSize: 14,
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(5),
-                  borderSide: const BorderSide(
-                    color: Color(0xFFD5D7D9),
-                    width: 1,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(5),
-                  borderSide: const BorderSide(
-                    color: Color(0xFFD5D7D9),
-                    width: 1,
-                  ),
-                ),
-              ),
+              decoration: _buildInputDecoration('닉네임 입력'),
             ),
 
             const SizedBox(height: 24),
@@ -187,10 +199,8 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
               '프로필 사진 (선택)',
               style: TextStyle(fontSize: 13, color: Color(0xFFADB5BD)),
             ),
-
             const SizedBox(height: 12),
 
-            // 프로필 사진 영역 (가운데 정렬)
             Center(
               child: GestureDetector(
                 onTap: _pickImage,
@@ -199,16 +209,12 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
                   height: 90,
                   child: Stack(
                     children: [
-                      // 프로필 원형
                       Container(
                         width: 90,
                         height: 90,
                         decoration: BoxDecoration(
                           color: const Color(0xFFE9ECEF),
                           shape: BoxShape.circle,
-
-                          // 사진이 있으면 이미지로 채우기
-                          // 변경: 바이트 데이터를 MemoryImage로 표시
                           image: _profileImageBytes != null
                               ? DecorationImage(
                                   image: MemoryImage(_profileImageBytes!),
@@ -217,8 +223,6 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
                               : null,
                         ),
                       ),
-
-                      // 카메라 아이콘 (우측 하단)
                       Positioned(
                         bottom: 0,
                         right: 0,
@@ -242,16 +246,15 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
-            // 확인 버튼
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isButtonEnabled ? _handleConfirm : null,
+                onPressed: (_isButtonEnabled && !_isLoading) ? _handleConfirm : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF96D484),
-                  disabledBackgroundColor: const Color(0xFFADB5BD),
+                  backgroundColor: AppColors.primaryAccent,
+                  disabledBackgroundColor: AppColors.border,
                   foregroundColor: Colors.white,
                   disabledForegroundColor: Colors.white,
                   elevation: 0,
@@ -260,12 +263,23 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
                     borderRadius: BorderRadius.circular(5),
                   ),
                 ),
-                child: const Text(
-                  '확인',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        '다음',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                      ),
               ),
             ),
+
+            const SizedBox(height: 24),
           ],
         ),
       ),

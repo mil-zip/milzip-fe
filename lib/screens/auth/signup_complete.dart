@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:milzip/screens/benefit/amusement_park.dart'; // ← 추가
+import 'package:milzip/screens/home.dart';
+import 'package:milzip/theme/app_colors.dart';
 
 class SignupCompleteScreen extends StatelessWidget {
   final String email;
@@ -14,11 +15,10 @@ class SignupCompleteScreen extends StatelessWidget {
     this.profileImageBytes,
   });
 
-  // 화면 이동 (일단 놀이공원 혜택으로)
   void _handleStart(BuildContext context) {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const BenefitCollectionScreen()),
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
       (route) => false,
     );
   }
@@ -145,7 +145,7 @@ class SignupCompleteScreen extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () => _handleStart(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF96D484),
+                  backgroundColor: AppColors.primaryAccent,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(vertical: 14),

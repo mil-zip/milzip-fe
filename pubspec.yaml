@@ -40,6 +40,7 @@ dependencies:
   http: ^1.2.1 # API 호출
   url_launcher: ^6.2.5 # 외부 링크 열기
   geocoding: ^4.0.0
+  shared_preferences: ^2.3.3
 
 
 

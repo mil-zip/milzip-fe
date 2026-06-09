@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:milzip/screens/home.dart';
 import 'package:milzip/screens/login_screen.dart';
+import 'package:milzip/services/auth_service.dart';
 import 'package:milzip/theme/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -41,9 +43,16 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _navigateToNextScreen() async {
     await Future.delayed(const Duration(milliseconds: 2500));
     if (!mounted) return;
+
+    final token = await AuthService.getAccessToken();
+    if (!mounted) return;
+    final destination = (token != null && token.isNotEmpty)
+        ? const HomeScreen()
+        : const LoginScreen();
+
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      MaterialPageRoute(builder: (context) => destination),
     );
   }
 

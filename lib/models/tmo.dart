@@ -35,7 +35,7 @@ class Tmo {
 
   factory Tmo.fromJson(Map<String, dynamic> json) {
     return Tmo(
-      id: json['id'],
+      id: (json['id'] as num?)?.toInt() ?? 0,
       name: json['name'] ?? '',
       address: json['address'] ?? '',
       latitude: (json['latitude'] as num).toDouble(),

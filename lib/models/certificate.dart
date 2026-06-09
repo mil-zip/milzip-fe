@@ -19,7 +19,7 @@ class Certificate {
 
   factory Certificate.fromJson(Map<String, dynamic> json) {
     return Certificate(
-      id: json['id'],
+      id: (json['id'] as num?)?.toInt() ?? 0,
       examName: json['exam_name'],
       originalPrice: json['original_price'],
       discountPrice: json['discount_price'],

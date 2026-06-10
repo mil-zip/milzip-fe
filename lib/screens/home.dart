@@ -24,7 +24,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  String _locationLabel = '위치 확인 중...';
+  String _locationLabel = '포천시 신북읍';
 
   // 탭 전환 시 재생성 방지
   final _pages = const [

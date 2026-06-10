@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 
 class AuthService {
   static const String _baseUrl = 'https://api.milzip.site';
@@ -218,6 +219,50 @@ class AuthService {
     final response = await http.Response.fromStream(streamed);
 
     _checkStatus(response, '회원가입 실패');
+  }
+
+  /// POST /auth/logout — 로그아웃 후 로컬 토큰 삭제
+  static Future<void> logout() async {
+    final token = await getAccessToken();
+    try {
+      await http.post(
+        Uri.parse('$_baseUrl/auth/logout'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+    } catch (_) {
+      // 서버 오류여도 로컬 토큰은 반드시 삭제
+    }
+    await clearTokens();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_emailKey);
+    await prefs.remove(_nicknameKey);
+    await prefs.remove(_militaryStatusKey);
+    await prefs.remove(_profileImageUrlKey);
+  }
+
+  /// GET /auth/kakao — 카카오 OAuth 로그인 후 토큰 저장
+  static Future<void> kakaoLogin() async {
+    final result = await FlutterWebAuth2.authenticate(
+      url: '$_baseUrl/auth/kakao',
+      callbackUrlScheme: 'milzip',
+    );
+
+    final uri = Uri.parse(result);
+    final accessToken = uri.queryParameters['accessToken'];
+    final refreshToken = uri.queryParameters['refreshToken'];
+
+    if (accessToken == null || accessToken.isEmpty) {
+      throw Exception('카카오 로그인에 실패했습니다.');
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_accessTokenKey, accessToken);
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      await prefs.setString(_refreshTokenKey, refreshToken);
+    }
   }
 
   /// POST /auth/login — 로그인 후 토큰 저장

@@ -17,7 +17,7 @@ class ApiClient {
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
   }
 
@@ -47,6 +47,8 @@ class ApiClient {
             throw Exception('세션이 만료되었습니다. 다시 로그인해 주세요.');
           }
           continue;
+        } else if (response.statusCode == 403) {
+          throw Exception('접근 권한이 없습니다.');
         } else {
           throw Exception('서버 오류: ${response.statusCode}');
         }
@@ -90,11 +92,12 @@ class ApiClient {
             )
             .timeout(const Duration(seconds: 60));
 
-        if (response.statusCode == 200) {
+        if (response.statusCode == 200 || response.statusCode == 201) {
           final decoded = jsonDecode(response.body) as Map<String, dynamic>;
           if (decoded['success'] == true) return decoded['data'];
           throw Exception(decoded['message'] ?? 'API 요청 실패');
-        } else if (response.statusCode == 401 && attempt == 1) {
+        } else if ((response.statusCode == 401 || response.statusCode == 403) && attempt == 1) {
+          // PUBLIC_URLS 경로에서 만료된 토큰은 403으로 오는 경우가 있어 함께 처리
           try {
             await AuthService.refreshTokens();
           } catch (_) {
@@ -103,6 +106,117 @@ class ApiClient {
             throw Exception('세션이 만료되었습니다. 다시 로그인해 주세요.');
           }
           continue;
+        } else if (response.statusCode == 403) {
+          throw Exception('접근 권한이 없습니다.');
+        } else {
+          throw Exception('서버 오류: ${response.statusCode}');
+        }
+      } on SocketException catch (e) {
+        lastError = Exception('네트워크 연결 실패: ${e.message}');
+      } on HandshakeException catch (e) {
+        lastError = Exception('보안 연결 실패: $e');
+      } on TimeoutException {
+        lastError = Exception('요청 시간 초과');
+      } catch (e) {
+        lastError = Exception('$e');
+      }
+
+      // ignore: avoid_print
+      print('[api] attempt $attempt/$maxRetries failed for $uri → $lastError');
+
+      if (attempt < maxRetries) {
+        await Future.delayed(Duration(seconds: attempt));
+      }
+    }
+
+    throw lastError!;
+  }
+
+  /// PUT 요청
+  static Future<dynamic> put(
+    String path, {
+    required Map<String, dynamic> body,
+    int maxRetries = 2,
+  }) async {
+    final uri = Uri.parse('$baseUrl$path');
+    Exception? lastError;
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final response = await http
+            .put(
+              uri,
+              headers: await _headers(),
+              body: jsonEncode(body),
+            )
+            .timeout(const Duration(seconds: 60));
+
+        if (response.statusCode == 200) {
+          final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+          if (decoded['success'] == true) return decoded['data'];
+          throw Exception(decoded['message'] ?? 'API 요청 실패');
+        } else if ((response.statusCode == 401 || response.statusCode == 403) && attempt == 1) {
+          try {
+            await AuthService.refreshTokens();
+          } catch (_) {
+            await AuthService.clearTokens();
+            _goToLogin();
+            throw Exception('세션이 만료되었습니다. 다시 로그인해 주세요.');
+          }
+          continue;
+        } else if (response.statusCode == 403) {
+          throw Exception('접근 권한이 없습니다.');
+        } else {
+          throw Exception('서버 오류: ${response.statusCode}');
+        }
+      } on SocketException catch (e) {
+        lastError = Exception('네트워크 연결 실패: ${e.message}');
+      } on HandshakeException catch (e) {
+        lastError = Exception('보안 연결 실패: $e');
+      } on TimeoutException {
+        lastError = Exception('요청 시간 초과');
+      } catch (e) {
+        lastError = Exception('$e');
+      }
+
+      // ignore: avoid_print
+      print('[api] attempt $attempt/$maxRetries failed for $uri → $lastError');
+
+      if (attempt < maxRetries) {
+        await Future.delayed(Duration(seconds: attempt));
+      }
+    }
+
+    throw lastError!;
+  }
+
+  /// DELETE 요청
+  static Future<dynamic> delete(String path, {int maxRetries = 2}) async {
+    final uri = Uri.parse('$baseUrl$path');
+    Exception? lastError;
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final response = await http
+            .delete(uri, headers: await _headers())
+            .timeout(const Duration(seconds: 30));
+
+        if (response.statusCode == 200 || response.statusCode == 204) {
+          if (response.body.isEmpty) return null;
+          final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+          if (decoded['success'] == true) return decoded['data'];
+          throw Exception(decoded['message'] ?? 'API 요청 실패');
+        } else if ((response.statusCode == 401 || response.statusCode == 403) && attempt == 1) {
+          try {
+            await AuthService.refreshTokens();
+          } catch (_) {
+            await AuthService.clearTokens();
+            _goToLogin();
+            throw Exception('세션이 만료되었습니다. 다시 로그인해 주세요.');
+          }
+          continue;
+        } else if (response.statusCode == 403) {
+          throw Exception('접근 권한이 없습니다.');
         } else {
           throw Exception('서버 오류: ${response.statusCode}');
         }

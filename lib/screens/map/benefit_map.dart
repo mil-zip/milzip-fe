@@ -634,7 +634,7 @@ class _CategoryChipBar extends StatelessWidget {
                 category,
                 style: TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                   color: selected ? Colors.white : AppColors.primary2,
                 ),
               ),
@@ -679,7 +679,7 @@ class _TmoInfoCard extends StatelessWidget {
                     tmo.name,
                     style: const TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.textMain,
                     ),
                   ),
@@ -731,7 +731,7 @@ class _TmoStatusBadge extends StatelessWidget {
         isOpen ? '운영 중' : '운영 종료',
         style: TextStyle(
           fontSize: 12,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w800,
           color: isOpen ? AppColors.primary2 : AppColors.textSub,
         ),
       ),
@@ -768,7 +768,7 @@ class _TmoInfoLine extends StatelessWidget {
             style: const TextStyle(
               fontSize: 14,
               height: 1.35,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: AppColors.textMain,
             ),
           ),
@@ -799,7 +799,7 @@ class _TmoDetailButton extends StatelessWidget {
         ),
         child: const Text(
           '상세 보기',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
         ),
       ),
     );
@@ -868,7 +868,6 @@ class _TmoListPanel extends StatelessWidget {
                               'TMO 목록',
                               style: TextStyle(
                                 fontSize: 20,
-                                fontWeight: FontWeight.w900,
                                 color: AppColors.textMain,
                               ),
                             ),
@@ -965,7 +964,7 @@ class _TmoListTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 17,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.textMain,
                   ),
                 ),
@@ -979,7 +978,7 @@ class _TmoListTile extends StatelessWidget {
                       '현재 위치와의 거리 $distance',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                         color: selected
                             ? AppColors.primary2
                             : AppColors.textMain,
@@ -1064,7 +1063,7 @@ class _StoreBottomSheet extends StatelessWidget {
                       store.name,
                       style: const TextStyle(
                         fontSize: 28,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.textMain,
                       ),
                     ),
@@ -1094,7 +1093,7 @@ class _StoreBottomSheet extends StatelessWidget {
                     store.benefitDescription,
                     style: const TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.primaryLight,
                     ),
                   ),
@@ -1149,7 +1148,7 @@ class _MapRecommendBadge extends StatelessWidget {
         '밀집추천',
         style: TextStyle(
           fontSize: 13,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w800,
           color: AppColors.primary1,
         ),
       ),

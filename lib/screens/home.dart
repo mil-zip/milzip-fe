@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:milzip/screens/login_screen.dart';
 import 'package:milzip/screens/my_page_screen.dart';
 import 'package:milzip/screens/recommend/quick_recommend_screen.dart';
 import 'package:milzip/screens/recommend/ai_recommend_screen.dart';
+import 'package:milzip/services/auth_service.dart';
 import 'package:milzip/services/location_service.dart';
 import 'package:milzip/theme/app_colors.dart';
 import 'package:milzip/widgets/app_header.dart';
@@ -72,10 +74,20 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _buildCurrentPage(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (i) {
-          setState(() {
-            _currentIndex = i;
-          });
+        onTap: (i) async {
+          if (i == 4) {
+            final loggedIn = await AuthService.isLoggedIn();
+            if (!context.mounted) return;
+            if (!loggedIn) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+              return;
+            }
+          }
+          setState(() => _currentIndex = i);
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: AppColors.surface,

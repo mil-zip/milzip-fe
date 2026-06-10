@@ -4,6 +4,7 @@ import 'package:milzip/models/store.dart';
 import 'package:milzip/models/store_review.dart';
 import 'package:milzip/screens/favorite_stores_screen.dart';
 import 'package:milzip/screens/map/store_detail_screen.dart';
+import 'package:milzip/screens/login_screen.dart';
 import 'package:milzip/screens/mypage/military_verification_screen.dart';
 import 'package:milzip/screens/mypage/password_reset_screen.dart';
 import 'package:milzip/screens/review/review_detail_screen.dart';
@@ -40,6 +41,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _loadAll() async {
+    final loggedIn = await AuthService.isLoggedIn();
+    if (!loggedIn) {
+      _redirectToLogin();
+      return;
+    }
     try {
       final results = await Future.wait([
         UserService.getMyInfo(),
@@ -58,9 +64,25 @@ class _MyPageScreenState extends State<MyPageScreen> {
         _favorites = favs;
         _reviews = reviewPage.content;
       });
-    } catch (_) {
-      // 토큰 없을 경우 등 조용히 처리
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString();
+      if (msg.contains('401') || msg.contains('403') || msg.contains('만료')) {
+        await AuthService.clearTokens();
+        _redirectToLogin();
+      }
     }
+  }
+
+  void _redirectToLogin() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    });
   }
 
   Future<void> _editNickname() async {
@@ -136,6 +158,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
               _buildActivity(),         // 즐겨찾기 + 저장한 혜택
               const SizedBox(height: 8),
               _buildReviews(),
+              const SizedBox(height: 8),
+              _buildLogout(),
               const SizedBox(height: 16),
             ],
           ),
@@ -620,6 +644,68 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  // ── 로그아웃 ──────────────────────────────────────────────────────────────
+  Widget _buildLogout() {
+    return Material(
+      color: Colors.white,
+      child: InkWell(
+        onTap: () async {
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              title: const Text(
+                '로그아웃',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              content: const Text(
+                '로그아웃 하시겠습니까?',
+                style: TextStyle(fontSize: 14, color: AppColors.textSub),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('취소', style: TextStyle(color: AppColors.textSub)),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text(
+                    '로그아웃',
+                    style: TextStyle(color: Color(0xFFE24B4A), fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          );
+          if (confirmed != true || !mounted) return;
+          await AuthService.logout();
+          if (!mounted) return;
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          child: Row(
+            children: const [
+              Icon(Icons.logout_rounded, size: 20, color: Color(0xFFE24B4A)),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '로그아웃',
+                  style: TextStyle(fontSize: 15, color: Color(0xFFE24B4A), fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

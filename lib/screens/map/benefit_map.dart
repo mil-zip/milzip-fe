@@ -25,9 +25,9 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
 
   final LatLng _fallbackCenter = LatLng(37.95745120515425, 127.3174892339337);
 
-  final List<String> _categories = ['음식', '숙박', 'PC방', '서비스', 'TMO'];
+  final List<String> _categories = ['TMO', '음식', '숙박', 'PC방', '서비스'];
 
-  String _selectedCategory = '음식';
+  String _selectedCategory = 'TMO';
 
   List<Store> _stores = [];
   List<Tmo> _tmos = [];
@@ -86,8 +86,14 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _showLocationPermissionDialogIfNeeded();
-      await _loadStoresByCategory(_selectedCategory);
+      // 폴백 좌표로 즉시 데이터 로드 (위치 취득 기다리지 않음)
+      if (_selectedCategory == 'TMO') {
+        _loadTmoList();
+      } else {
+        _loadStoresByCategory(_selectedCategory);
+      }
+      // 위치 권한 확인 및 취득은 병렬로 처리
+      _showLocationPermissionDialogIfNeeded();
     });
   }
 
@@ -225,15 +231,28 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
   }
 
   Future<void> _moveToCurrentLocation() async {
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-    );
-
-    final latLng = LatLng(position.latitude, position.longitude);
-
-    _currentLatLng = latLng;
-    _mapController?.setCenter(latLng);
-    _mapController?.setLevel(5);
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 5),
+        ),
+      );
+      final latLng = LatLng(position.latitude, position.longitude);
+      _currentLatLng = latLng;
+      if (mounted) {
+        _mapController?.setCenter(latLng);
+        _mapController?.setLevel(5);
+        // 실제 위치로 데이터 재로드
+        if (_selectedCategory == 'TMO') {
+          _loadTmoList();
+        } else {
+          _loadStoresByCategory(_selectedCategory);
+        }
+      }
+    } catch (_) {
+      _moveToFallbackLocation();
+    }
   }
 
   void _moveToFallbackLocation() {
@@ -309,9 +328,8 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       });
 
       if (tmos.isNotEmpty) {
-        final first = tmos.first;
-        _mapController?.setCenter(LatLng(first.latitude, first.longitude));
-        _mapController?.setLevel(6);
+        _mapController?.setCenter(_requestCenter);
+        _mapController?.setLevel(8);
       }
     } catch (_) {
       if (!mounted) return;

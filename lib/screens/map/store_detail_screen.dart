@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/store.dart';
 import '../../models/store_review.dart';
@@ -514,12 +515,48 @@ class _StoreSummary extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          store.distanceLabel,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textSub,
+        GestureDetector(
+          onTap: () async {
+            final name = Uri.encodeComponent(store.name);
+            final lat = store.latitude;
+            final lng = store.longitude;
+            final appUrl = Uri.parse(
+              'kakaomap://route?ep=$lat,$lng&by=FOOT',
+            );
+            final webUrl = Uri.parse(
+              'https://map.kakao.com/link/to/$name,$lat,$lng',
+            );
+            if (await canLaunchUrl(appUrl)) {
+              await launchUrl(appUrl);
+            } else {
+              await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEE500),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  'assets/images/kakao_login.png',
+                  width: 18,
+                  height: 18,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  '카카오맵으로 길찾기',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF191919),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],

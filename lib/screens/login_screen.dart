@@ -3,10 +3,40 @@ import 'package:flutter/material.dart';
 import 'package:milzip/screens/auth/email_login_screen.dart';
 import 'package:milzip/screens/auth/signup_email.dart';
 import 'package:milzip/screens/home.dart';
+import 'package:milzip/services/auth_service.dart';
+import 'package:milzip/services/user_service.dart';
 import 'package:milzip/theme/app_colors.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  bool _isKakaoLoading = false;
+
+  Future<void> _handleKakaoLogin() async {
+    setState(() => _isKakaoLoading = true);
+    try {
+      await AuthService.kakaoLogin();
+      await UserService.getMyInfo();
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isKakaoLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,9 +105,7 @@ class LoginScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 54,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: 카카오 로그인 연동
-                  },
+                  onPressed: _isKakaoLoading ? null : _handleKakaoLogin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFEE500),
                     foregroundColor: const Color(0xFF191919),
@@ -86,25 +114,34 @@ class LoginScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Image.asset(
-                        'assets/images/kakao_login.png',
-                        width: 20,
-                        height: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        '카카오로 로그인',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.3,
+                  child: _isKakaoLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Color(0xFF191919),
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              'assets/images/kakao_login.png',
+                              width: 20,
+                              height: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              '카카오로 로그인',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
 

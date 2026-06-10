@@ -32,8 +32,8 @@ class _SavedBenefitsScreenState extends State<SavedBenefitsScreen> {
       ]);
       if (!mounted) return;
       setState(() {
-        _benefits = results[0] as List<Map<String, dynamic>>;
-        _tmos = results[1] as List<Map<String, dynamic>>;
+        _benefits = results[0];
+        _tmos = results[1];
       });
     } catch (_) {
     } finally {
@@ -195,9 +195,17 @@ class _BenefitCard extends StatelessWidget {
     required this.onRemove,
   });
 
+  String _displayLabel(String raw) {
+    if (raw.contains('영화')) return raw;
+    if (raw.contains('놀이')) return raw;
+    if (raw.isNotEmpty) return '청년정책 혜택';
+    return raw;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final category = data['benefitTypeDescription'] as String? ?? '';
+    final rawCategory = data['benefitTypeDescription'] as String? ?? '';
+    final category = _displayLabel(rawCategory);
     final title = data['title'] as String? ?? '';
     final discount = data['discountDescription'] as String? ?? '';
     final imageUrl = data['imageUrl'] as String?;

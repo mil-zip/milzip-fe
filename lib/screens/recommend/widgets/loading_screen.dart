@@ -1,10 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:milzip/models/ai_recommend_result.dart';
 import 'package:milzip/theme/app_colors.dart';
 
 class LoadingScreen extends StatefulWidget {
-  final VoidCallback onDone;
-  const LoadingScreen({super.key, required this.onDone});
+  final Future<AiRecommendResult> future;
+  final ValueChanged<AiRecommendResult> onDone;
+  final ValueChanged<String> onError;
+
+  const LoadingScreen({
+    super.key,
+    required this.future,
+    required this.onDone,
+    required this.onError,
+  });
 
   @override
   State<LoadingScreen> createState() => _LoadingScreenState();
@@ -12,10 +21,11 @@ class LoadingScreen extends StatefulWidget {
 
 class _LoadingScreenState extends State<LoadingScreen>
     with TickerProviderStateMixin {
+  static const _stepMs = 2000;
   static const _items = [
     '현재 위치 기준 거리 분석',
     '군장병 혜택 적용 매장 확인',
-    '평점과 만족도 기반 추천 정렬',
+    'AI가 최적 코스 생성 중',
   ];
 
   static const _heroIcons = [
@@ -26,47 +36,101 @@ class _LoadingScreenState extends State<LoadingScreen>
     Icons.local_offer,
   ];
 
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
+  // 1단계: 0→80% (phase1)
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
+
+  // 2단계: 80→100% (completion)
+  late AnimationController _completionController;
+  late Animation<double> _completionAnimation;
+
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   int _heroIconIndex = 0;
   int _visibleCount = 0;
   Timer? _heroTimer;
 
+  bool _animDone = false;
+  bool _completing = false;
+  AiRecommendResult? _result;
+
   @override
   void initState() {
     super.initState();
 
+    // 펄스 아이콘
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1400),
       vsync: this,
     )..repeat(reverse: true);
-    _pulseAnimation = CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut);
+    _pulseAnimation =
+        CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut);
 
-    // 전체 진행도를 부드럽게 채우는 컨트롤러
-    final totalMs = 700 * (_items.length + 1);
+    // 1단계 프로그레스: 0→1 (표시는 *0.8 = 80%)
+    final totalMs = _stepMs * (_items.length + 1); // 4000ms
     _progressController = AnimationController(
       duration: Duration(milliseconds: totalMs),
       vsync: this,
     );
-    _progressAnimation = CurvedAnimation(parent: _progressController, curve: Curves.easeInOut);
+    _progressAnimation = CurvedAnimation(
+      parent: _progressController,
+      curve: Curves.easeInOut,
+    );
     _progressController.forward();
 
-    _heroTimer = Timer.periodic(const Duration(milliseconds: 1800), (_) {
-      if (mounted) setState(() => _heroIconIndex = (_heroIconIndex + 1) % _heroIcons.length);
+    // 2단계 프로그레스: 80→100%, API완료+1단계완료 후 시작
+    _completionController = AnimationController(
+      duration: const Duration(milliseconds: 700),
+      vsync: this,
+    );
+    _completionAnimation = CurvedAnimation(
+      parent: _completionController,
+      curve: Curves.easeOut,
+    );
+    _completionController.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted && _result != null) {
+        widget.onDone(_result!);
+      }
     });
 
+    // 아이콘 순환
+    _heroTimer = Timer.periodic(const Duration(milliseconds: 1800), (_) {
+      if (mounted) {
+        setState(
+            () => _heroIconIndex = (_heroIconIndex + 1) % _heroIcons.length);
+      }
+    });
+
+    // 체크리스트 항목 순차 표시
     for (int i = 0; i < _items.length; i++) {
-      Future.delayed(Duration(milliseconds: 700 * (i + 1)), () {
+      Future.delayed(Duration(milliseconds: _stepMs * (i + 1)), () {
         if (mounted) setState(() => _visibleCount = i + 1);
       });
     }
 
+    // 1단계 완료 시점
     Future.delayed(Duration(milliseconds: totalMs), () {
-      if (mounted) widget.onDone();
+      if (mounted) {
+        _animDone = true;
+        _tryComplete();
+      }
     });
+
+    // API 완료 대기
+    widget.future.then((result) {
+      _result = result;
+      _tryComplete();
+    }).catchError((Object e) {
+      if (mounted) widget.onError(e.toString().replaceFirst('Exception: ', ''));
+    });
+  }
+
+  void _tryComplete() {
+    if (_animDone && _result != null && !_completing && mounted) {
+      _completing = true;
+      _completionController.forward();
+    }
   }
 
   @override
@@ -74,6 +138,7 @@ class _LoadingScreenState extends State<LoadingScreen>
     _heroTimer?.cancel();
     _pulseController.dispose();
     _progressController.dispose();
+    _completionController.dispose();
     super.dispose();
   }
 
@@ -84,7 +149,6 @@ class _LoadingScreenState extends State<LoadingScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(26),
@@ -103,22 +167,18 @@ class _LoadingScreenState extends State<LoadingScreen>
             child: Column(
               children: [
                 _buildPulseIcon(),
-
                 const SizedBox(height: 18),
-
                 const Text(
-                  '맞춤 장소를 찾고 있어요',
+                  'AI가 코스를 만들고 있어요',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
                     color: Colors.black,
                   ),
                 ),
-
                 const SizedBox(height: 8),
-
                 Text(
-                  '위치, 혜택, 만족도를 기준으로\n가장 알맞은 장소를 분석 중이에요',
+                  '위치, 혜택, 만족도를 기준으로\n가장 알맞은 코스를 분석 중이에요',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -127,24 +187,27 @@ class _LoadingScreenState extends State<LoadingScreen>
                     color: Colors.grey[600],
                   ),
                 ),
-
                 const SizedBox(height: 24),
-
+                // 진행도 바: 1단계(0→80%) + 2단계(80→100%)
                 AnimatedBuilder(
-                  animation: _progressAnimation,
-                  builder: (context, _) => ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: LinearProgressIndicator(
-                      value: _progressAnimation.value,
-                      minHeight: 8,
-                      backgroundColor: Colors.grey[100],
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary2),
-                    ),
-                  ),
+                  animation: Listenable.merge(
+                      [_progressAnimation, _completionAnimation]),
+                  builder: (context, _) {
+                    final val = _progressAnimation.value * 0.8 +
+                        _completionAnimation.value * 0.2;
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: LinearProgressIndicator(
+                        value: val,
+                        minHeight: 8,
+                        backgroundColor: Colors.grey[100],
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primary2),
+                      ),
+                    );
+                  },
                 ),
-
                 const SizedBox(height: 22),
-
                 Column(
                   children: [
                     for (int i = 0; i < _items.length; i++)
@@ -184,9 +247,7 @@ class _LoadingScreenState extends State<LoadingScreen>
               ],
             ),
           ),
-
           const SizedBox(height: 24),
-
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(18),
@@ -212,7 +273,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    '잠시만 기다리면\n추천 결과를 바로 확인할 수 있어요',
+                    '잠시만 기다리면\n추천 코스를 바로 확인할 수 있어요',
                     style: TextStyle(
                       fontSize: 14,
                       height: 1.4,
@@ -234,7 +295,6 @@ class _LoadingScreenState extends State<LoadingScreen>
       animation: _pulseAnimation,
       builder: (context, _) {
         final p = _pulseAnimation.value;
-
         return SizedBox(
           width: 120,
           height: 120,
@@ -265,18 +325,11 @@ class _LoadingScreenState extends State<LoadingScreen>
                 ),
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 450),
-                  transitionBuilder: (child, anim) {
-                    return ScaleTransition(
-                      scale: CurvedAnimation(
-                        parent: anim,
-                        curve: Curves.easeOutBack,
-                      ),
-                      child: FadeTransition(
-                        opacity: anim,
-                        child: child,
-                      ),
-                    );
-                  },
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    scale: CurvedAnimation(
+                        parent: anim, curve: Curves.easeOutBack),
+                    child: FadeTransition(opacity: anim, child: child),
+                  ),
                   child: Icon(
                     _heroIcons[_heroIconIndex],
                     key: ValueKey(_heroIconIndex),

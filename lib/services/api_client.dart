@@ -7,6 +7,7 @@ import 'package:milzip/main.dart';
 import 'package:milzip/screens/login_screen.dart';
 import 'package:milzip/services/auth_service.dart';
 
+
 /// API 공통 설정 — baseUrl, 공통 헤더, 응답 파싱
 class ApiClient {
   static const String baseUrl = 'https://api.milzip.site';
@@ -41,6 +42,62 @@ class ApiClient {
             await AuthService.refreshTokens();
           } catch (_) {
             // 갱신 실패 → 로그인 화면으로
+            await AuthService.clearTokens();
+            _goToLogin();
+            throw Exception('세션이 만료되었습니다. 다시 로그인해 주세요.');
+          }
+          continue;
+        } else {
+          throw Exception('서버 오류: ${response.statusCode}');
+        }
+      } on SocketException catch (e) {
+        lastError = Exception('네트워크 연결 실패: ${e.message}');
+      } on HandshakeException catch (e) {
+        lastError = Exception('보안 연결 실패: $e');
+      } on TimeoutException {
+        lastError = Exception('요청 시간 초과');
+      } catch (e) {
+        lastError = Exception('$e');
+      }
+
+      // ignore: avoid_print
+      print('[api] attempt $attempt/$maxRetries failed for $uri → $lastError');
+
+      if (attempt < maxRetries) {
+        await Future.delayed(Duration(seconds: attempt));
+      }
+    }
+
+    throw lastError!;
+  }
+
+  /// POST 요청
+  static Future<dynamic> post(
+    String path, {
+    required Map<String, dynamic> body,
+    int maxRetries = 2,
+  }) async {
+    final uri = Uri.parse('$baseUrl$path');
+    Exception? lastError;
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final response = await http
+            .post(
+              uri,
+              headers: await _headers(),
+              body: jsonEncode(body),
+            )
+            .timeout(const Duration(seconds: 60));
+
+        if (response.statusCode == 200) {
+          final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+          if (decoded['success'] == true) return decoded['data'];
+          throw Exception(decoded['message'] ?? 'API 요청 실패');
+        } else if (response.statusCode == 401 && attempt == 1) {
+          try {
+            await AuthService.refreshTokens();
+          } catch (_) {
             await AuthService.clearTokens();
             _goToLogin();
             throw Exception('세션이 만료되었습니다. 다시 로그인해 주세요.');

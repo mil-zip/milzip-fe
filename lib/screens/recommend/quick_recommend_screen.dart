@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:milzip/models/place.dart';
+import 'package:milzip/models/quick_store.dart';
+import 'package:milzip/models/store.dart';
+import 'package:milzip/screens/map/store_detail_screen.dart';
+import 'package:milzip/services/location_service.dart';
+import 'package:milzip/services/quick_recommend_api.dart';
 import 'package:milzip/theme/app_colors.dart';
-import 'package:milzip/widgets/place_card.dart';
 
 class QuickRecommendScreen extends StatefulWidget {
   const QuickRecommendScreen({super.key});
@@ -14,12 +17,21 @@ class QuickRecommendScreen extends StatefulWidget {
 class _QuickRecommendScreenState extends State<QuickRecommendScreen>
     with TickerProviderStateMixin {
   int _selectedCategory = 0;
+  String _sortBy = 'recommend';
   int _heroIconIndex = 0;
   Timer? _heroTimer;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  final ScrollController _scrollController = ScrollController();
+  bool _showScrollTop = false;
 
-  // 히어로 애니메이션 아이콘 목록
+  List<QuickStore> _stores = [];
+  int _page = 0;
+  bool _hasNext = false;
+  bool _isLoading = false;
+  bool _isLoadingMore = false;
+  String? _error;
+
   static const _heroIcons = [
     Icons.restaurant,
     Icons.local_cafe,
@@ -28,6 +40,13 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
     Icons.local_offer,
   ];
 
+  static const List<String?> _categoryValues = [
+    'FOOD',
+    'CAFE',
+    'LEISURE',
+    'ACCOMMODATION',
+    'ETC',
+  ];
   static const _categoryIcons = [
     Icons.restaurant,
     Icons.local_cafe,
@@ -36,33 +55,6 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
     Icons.more_horiz,
   ];
   static const _categoryLabels = ['음식', '카페', '여가', '숙박', '기타'];
-
-  static const _mockPlaces = [
-    Place(
-      id: '1',
-      name: '꼬숩집 미아사거리점',
-      categories: ['삼겹살', '오겹살'],
-      militaryDiscount: '군장병 15% 할인',
-      distanceKm: 1.2,
-      isMilzipRecommended: true,
-    ),
-    Place(
-      id: '2',
-      name: '꼬숩집 미아사거리점',
-      categories: ['삼겹살', '오겹살'],
-      militaryDiscount: '군장병 15% 할인',
-      distanceKm: 1.2,
-      isMilzipRecommended: true,
-    ),
-    Place(
-      id: '3',
-      name: '꼬숩집 미아사거리점',
-      categories: ['삼겹살', '오겹살'],
-      militaryDiscount: '군장병 15% 할인',
-      distanceKm: 1.2,
-      isMilzipRecommended: true,
-    ),
-  ];
 
   @override
   void initState() {
@@ -80,54 +72,231 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
         _heroIconIndex = (_heroIconIndex + 1) % _heroIcons.length;
       });
     });
+    _scrollController.addListener(_onScroll);
+    _loadData(reset: true);
+  }
+
+  void _onScroll() {
+    final px = _scrollController.position.pixels;
+
+    final shouldShow = px > 300;
+    if (shouldShow != _showScrollTop) {
+      setState(() => _showScrollTop = shouldShow);
+    }
+
+    if (px >= _scrollController.position.maxScrollExtent - 300 &&
+        !_isLoadingMore &&
+        _hasNext) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadData({bool reset = false}) async {
+    if (_isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      if (reset) {
+        _stores = [];
+        _page = 0;
+      }
+    });
+    try {
+      final pos = LocationService.instance.position;
+      final result = await QuickRecommendApi.fetch(
+        lat: pos?.latitude,
+        lng: pos?.longitude,
+        category: _categoryValues[_selectedCategory],
+        sortBy: _sortBy,
+        page: 0,
+        size: 20,
+      );
+      if (!mounted) return;
+      setState(() {
+        _stores = result.content;
+        _page = 0;
+        _hasNext = result.hasNext;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = _parseError(e);
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasNext) return;
+    setState(() => _isLoadingMore = true);
+    try {
+      final pos = LocationService.instance.position;
+      final result = await QuickRecommendApi.fetch(
+        lat: pos?.latitude,
+        lng: pos?.longitude,
+        category: _categoryValues[_selectedCategory],
+        sortBy: _sortBy,
+        page: _page + 1,
+        size: 20,
+      );
+      if (!mounted) return;
+      setState(() {
+        _stores.addAll(result.content);
+        _page++;
+        _hasNext = result.hasNext;
+        _isLoadingMore = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingMore = false);
+    }
   }
 
   @override
   void dispose() {
     _heroTimer?.cancel();
     _pulseController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHero(),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _buildBestBanner(),
-          ),
-          const SizedBox(height: 24),
-          _buildCategories(),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _buildSortRow(),
-          ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              children: _mockPlaces
-                  .map(
-                    (p) => Padding(
+    return Stack(
+      children: [
+        CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            SliverToBoxAdapter(child: _buildHero()),
+            // SliverToBoxAdapter(
+            //   child: Padding(
+            //     padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            //     child: _buildBestBanner(),
+            //   ),
+            // ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: _buildCategories(),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [_buildSortRow()],
+                ),
+              ),
+            ),
+            if (_isLoading)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 60),
+                    child: CircularProgressIndicator(
+                      color: AppColors.primary2,
+                      strokeWidth: 2.5,
+                    ),
+                  ),
+                ),
+              )
+            else if (_error != null)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _buildError(),
+              )
+            else if (_stores.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _buildEmpty(),
+              )
+            else ...[
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: PlaceCard(
-                        place: p,
-                        categoryIcon: _categoryIcons[_selectedCategory],
+                      child: _buildStoreCard(_stores[index]),
+                    ),
+                    childCount: _stores.length,
+                  ),
+                ),
+              ),
+              if (_isLoadingMore)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary2,
+                        strokeWidth: 2.5,
                       ),
                     ),
-                  )
-                  .toList(),
+                  ),
+                ),
+              if (!_hasNext && _stores.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: Text(
+                        '총 ${_stores.length}개의 매장을 모두 불러왔어요',
+                        style: const TextStyle(
+                          color: AppColors.textSub,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
+          ],
+        ),
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+          bottom: _showScrollTop ? 24 : -72,
+          right: 20,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: _showScrollTop ? 1.0 : 0.0,
+            child: GestureDetector(
+              onTap: () {
+                _scrollController.animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOut,
+                );
+              },
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.primary2,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary2.withAlpha(80),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.keyboard_arrow_up_rounded,
+                  color: Colors.white,
+                  size: 26,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 24),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -140,7 +309,6 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
       child: Stack(
         clipBehavior: Clip.hardEdge,
         children: [
-          // ── 텍스트 (왼쪽 정렬, 레이아웃 높이 결정) ──────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 32, 130, 32),
             child: Column(
@@ -170,7 +338,6 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
               ],
             ),
           ),
-          // ── 애니메이션 아이콘 (우상단 고정 — 레이아웃 비영향) ─────────
           Positioned(
             top: -28,
             right: -28,
@@ -184,7 +351,6 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // 외부 링 2
                       Container(
                         width: 140 + p * 30,
                         height: 140 + p * 30,
@@ -195,7 +361,6 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                           ),
                         ),
                       ),
-                      // 외부 링 1
                       Container(
                         width: 112 + p * 16,
                         height: 112 + p * 16,
@@ -206,7 +371,6 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                           ),
                         ),
                       ),
-                      // 메인 아이콘 (스핀 + 바운스)
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 550),
                         transitionBuilder: (child, anim) {
@@ -241,7 +405,10 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                             gradient: const LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [AppColors.primaryLight, AppColors.primary2],
+                              colors: [
+                                AppColors.primaryLight,
+                                AppColors.primary2,
+                              ],
                             ),
                             boxShadow: [
                               BoxShadow(
@@ -271,7 +438,8 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
     );
   }
 
-  // ── BEST 배너 ─────────────────────────────────────────────────────────────
+  // ── BEST 배너 (현재 미사용) ───────────────────────────────────────────────
+  // ignore: unused_element
   Widget _buildBestBanner() {
     return GestureDetector(
       onTap: () {},
@@ -289,7 +457,6 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
         ),
         child: Stack(
           children: [
-            // 배경 — 배지 이미지 희미하게
             Positioned(
               right: -12,
               top: -8,
@@ -302,7 +469,6 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                 ),
               ),
             ),
-            // 텍스트 콘텐츠
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 120, 0),
               child: Column(
@@ -375,7 +541,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: List.generate(_categoryIcons.length, _buildCategoryItem),
+        children: List.generate(_categoryLabels.length, _buildCategoryItem),
       ),
     );
   }
@@ -384,7 +550,12 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
     final isSelected = index == _selectedCategory;
 
     return GestureDetector(
-      onTap: () => setState(() => _selectedCategory = index),
+      onTap: () {
+        if (_selectedCategory != index) {
+          setState(() => _selectedCategory = index);
+          _loadData(reset: true);
+        }
+      },
       child: SizedBox(
         width: 58,
         child: Column(
@@ -420,7 +591,8 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                 color: isSelected
                     ? AppColors.primary2
                     : const Color(0xFFAAAAAA),
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                fontWeight:
+                    isSelected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
           ],
@@ -429,32 +601,393 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
     );
   }
 
+  // ── 정렬 필터 ─────────────────────────────────────────────────────────────
+  static const _sortOptions = [
+    ('recommend', '추천순'),
+    ('discount', '할인율순'),
+    ('distance', '거리순'),
+  ];
+
+  String get _currentSortLabel =>
+      _sortOptions.firstWhere((o) => o.$1 == _sortBy).$2;
+
+  final _sortButtonKey = GlobalKey();
+
   Widget _buildSortRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text(
-          '지금 가장 많이 조회된 TOP 3',
-          style: TextStyle(color: AppColors.textSub, fontSize: 12),
+    return GestureDetector(
+      key: _sortButtonKey,
+      onTap: _showSortDropdown,
+      child: Container(
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
         ),
-        GestureDetector(
-          onTap: () {},
-          child: const Row(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _currentSortLabel,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMain,
+              ),
+            ),
+            const SizedBox(width: 2),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 18,
+              color: AppColors.textSub,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSortDropdown() {
+    final box =
+        _sortButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final offset = box.localToGlobal(Offset.zero);
+    final size = box.size;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    showMenu<String>(
+      context: context,
+      color: AppColors.surface,
+      elevation: 8,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      position: RelativeRect.fromLTRB(
+        offset.dx,
+        offset.dy + size.height + 4,
+        screenWidth - (offset.dx + size.width),
+        0,
+      ),
+      items: _sortOptions.map((opt) {
+        final (value, label) = opt;
+        final isSelected = _sortBy == value;
+        return PopupMenuItem<String>(
+          value: value,
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '밀집 추천 순',
-                style: TextStyle(color: AppColors.textSub, fontSize: 12),
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight:
+                      isSelected ? FontWeight.w700 : FontWeight.w400,
+                  color: isSelected
+                      ? AppColors.primary2
+                      : AppColors.textMain,
+                ),
               ),
-              SizedBox(width: 2),
-              Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 18,
-                color: AppColors.textSub,
-              ),
+              if (isSelected) ...[
+                const SizedBox(width: 8),
+                const Icon(Icons.check_rounded,
+                    color: AppColors.primary2, size: 16),
+              ],
             ],
           ),
+        );
+      }).toList(),
+    ).then((value) {
+      if (value != null && value != _sortBy) {
+        setState(() => _sortBy = value);
+        _loadData(reset: true);
+      }
+    });
+  }
+
+  // ── 매장 카드 ─────────────────────────────────────────────────────────────
+  Widget _buildStoreCard(QuickStore store) {
+    final firstImage =
+        store.imageUrls.isNotEmpty ? store.imageUrls.first : null;
+    final icon = _iconForCategory(store.category);
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => StoreDetailScreen(store: _toStore(store)),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: AppColors.border, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(8),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-      ],
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(11),
+              child: Container(
+                width: 100,
+                height: 100,
+                color: AppColors.surfaceSoft,
+                child: firstImage != null
+                    ? Image.network(
+                        firstImage,
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, err, st) => Icon(
+                          icon,
+                          size: 36,
+                          color: AppColors.border,
+                        ),
+                      )
+                    : Icon(icon, size: 36, color: AppColors.border),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    store.name,
+                    style: const TextStyle(
+                      color: AppColors.textMain,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    store.address,
+                    style: const TextStyle(
+                      color: AppColors.textSub,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  if (store.maxDiscountRate > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.discountBg,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.discountBorder,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.shield,
+                            size: 13,
+                            color: AppColors.discountBorder,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _discountLabel(store.maxDiscountRate),
+                            style: const TextStyle(
+                              color: AppColors.discountText,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (store.distanceKm != null) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          size: 13,
+                          color: AppColors.textSub,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          _distanceLabel(store.distanceKm!),
+                          style: const TextStyle(
+                            color: AppColors.textSub,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _iconForCategory(String category) {
+    switch (category) {
+      case 'FOOD':
+        return Icons.restaurant;
+      case 'CAFE':
+        return Icons.local_cafe;
+      case 'LEISURE':
+        return Icons.local_activity;
+      case 'ACCOMMODATION':
+        return Icons.hotel;
+      default:
+        return Icons.local_offer;
+    }
+  }
+
+  String _discountLabel(int rate) {
+    if (rate > 100) {
+      final formatted = rate.toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+        (m) => '${m[1]},',
+      );
+      return '$formatted원 할인';
+    }
+    return '$rate% 할인';
+  }
+
+  String _distanceLabel(double km) {
+    if (km < 1) {
+      final m = (km * 1000).round();
+      return '${m}m';
+    }
+    return '${km.toStringAsFixed(1)}km';
+  }
+
+  Store _toStore(QuickStore qs) {
+    return Store(
+      id: qs.id,
+      name: qs.name,
+      category: _mapStoreCategory(qs.category),
+      address: qs.address,
+      latitude: qs.latitude,
+      longitude: qs.longitude,
+      phone: qs.phone,
+      openTime: qs.openTime,
+      closeTime: qs.closeTime,
+      maxDiscountRate: qs.maxDiscountRate > 0 ? qs.maxDiscountRate : null,
+      militaryBenefit: qs.militaryBenefit,
+      benefitVerified: qs.benefitVerified,
+      imageUrls: qs.imageUrls,
+      distanceKm: qs.distanceKm,
+    );
+  }
+
+  StoreCategory _mapStoreCategory(String category) {
+    switch (category) {
+      case 'FOOD':
+        return StoreCategory.food;
+      case 'CAFE':
+        return StoreCategory.cafe;
+      case 'LEISURE':
+        return StoreCategory.leisure;
+      case 'ACCOMMODATION':
+        return StoreCategory.accommodation;
+      default:
+        return StoreCategory.etc;
+    }
+  }
+
+  String _parseError(Object e) {
+    final msg = e.toString();
+    if (msg.contains('SocketException') || msg.contains('네트워크')) {
+      return '네트워크 연결을 확인해 주세요';
+    }
+    if (msg.contains('TimeoutException') || msg.contains('시간 초과')) {
+      return '요청 시간이 초과됐어요. 다시 시도해 주세요';
+    }
+    if (msg.contains("type 'Null'") || msg.contains('Null check')) {
+      return '데이터를 불러오는 중 문제가 발생했어요';
+    }
+    return msg.replaceFirst('Exception: ', '');
+  }
+
+  // ── 빈 상태 / 에러 ────────────────────────────────────────────────────────
+  Widget _buildEmpty() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 60),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.store_mall_directory_outlined,
+                size: 48, color: AppColors.border),
+            SizedBox(height: 12),
+            Text(
+              '근처 매장이 없어요',
+              style: TextStyle(color: AppColors.textSub, fontSize: 14),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: AppColors.border),
+            const SizedBox(height: 12),
+            Text(
+              _error ?? '오류가 발생했어요',
+              style: const TextStyle(color: AppColors.textSub, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: () => _loadData(reset: true),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary2,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  '다시 시도',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

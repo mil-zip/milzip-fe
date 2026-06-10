@@ -53,11 +53,12 @@ class CompanySelectionScreen extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      Icon(
-                        Icons.check_rounded,
-                        size: 20,
-                        color: isSelected ? Colors.white : Colors.grey[400],
-                      ),
+                      if (isSelected)
+                        const Icon(
+                          Icons.check_rounded,
+                          size: 20,
+                          color: Colors.white,
+                        ),
                     ],
                   ),
                 ),

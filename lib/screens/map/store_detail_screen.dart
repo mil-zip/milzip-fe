@@ -26,13 +26,23 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
 
   final List<SubmittedStoreReview> _submittedReviews = [];
 
-  final List<String> _baseImageAssets = const [
+  static const List<String> _fallbackImageAssets = [
     'assets/images/store_yukhoe_1.png',
     'assets/images/store_yukhoe_2.png',
     'assets/images/store_yukhoe_3.png',
     'assets/images/store_yukhoe_4.png',
     'assets/images/store_yukhoe_5.png',
   ];
+
+  List<_PhotoViewerItem> get _storePhotoItems {
+    final urls = widget.store.imageUrls;
+    if (urls.isNotEmpty) {
+      return urls.map((url) => _PhotoViewerItem(path: url, isNetwork: true)).toList();
+    }
+    return _fallbackImageAssets
+        .map((p) => _PhotoViewerItem(path: p, isAsset: true))
+        .toList();
+  }
 
   List<String> get _submittedImagePaths {
     return _submittedReviews.expand((review) => review.imagePaths).toList();
@@ -114,7 +124,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                       onWriteReview: _openReviewWriteScreen,
                     ),
                     const SizedBox(height: 24),
-                    _PhotoCarousel(imageAssets: _baseImageAssets),
+                    _PhotoCarousel(items: _storePhotoItems),
                     const SizedBox(height: 28),
                     _DetailTabs(
                       selectedIndex: _selectedTabIndex,
@@ -157,7 +167,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
         );
       case 4:
         return _PhotoTabContent(
-          assetImages: _baseImageAssets,
+          storeImages: _storePhotoItems,
           submittedImagePaths: _submittedImagePaths,
         );
       default:
@@ -220,6 +230,11 @@ class _StoreDetailHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatDistance(double km) {
+  if (km < 1) return '${(km * 1000).round()}m';
+  return '${km.toStringAsFixed(1)}km';
 }
 
 class _StoreSummary extends StatelessWidget {
@@ -301,15 +316,16 @@ class _StoreSummary extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            '1.2km',
-            style: TextStyle(
-              fontSize: 19,
-              height: 1.35,
-              color: AppColors.textSub,
-              fontWeight: FontWeight.w700,
+          if (store.distanceKm != null)
+            Text(
+              _formatDistance(store.distanceKm!),
+              style: const TextStyle(
+                fontSize: 19,
+                height: 1.35,
+                color: AppColors.textSub,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -348,31 +364,29 @@ class _ReviewWriteButton extends StatelessWidget {
 }
 
 class _PhotoCarousel extends StatelessWidget {
-  final List<String> imageAssets;
+  final List<_PhotoViewerItem> items;
 
-  const _PhotoCarousel({required this.imageAssets});
+  const _PhotoCarousel({required this.items});
 
   @override
   Widget build(BuildContext context) {
-    final viewerItems = imageAssets
-        .map((path) => _PhotoViewerItem(path: path, isAsset: true))
-        .toList();
-
     return SizedBox(
       height: 210,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 34),
-        itemCount: imageAssets.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 14),
         itemBuilder: (context, index) {
+          final item = items[index];
           return _StorePhoto(
-            path: imageAssets[index],
-            isAsset: true,
+            path: item.path,
+            isAsset: item.isAsset,
+            isNetwork: item.isNetwork,
             isPrimary: index == 0,
             width: 260,
             height: 210,
-            viewerItems: viewerItems,
+            viewerItems: items,
             initialIndex: index,
           );
         },
@@ -764,7 +778,7 @@ class _SubmittedReviewCard extends StatelessWidget {
     final date =
         '${review.createdAt.year}.${review.createdAt.month.toString().padLeft(2, '0')}.${review.createdAt.day.toString().padLeft(2, '0')}';
     final viewerItems = review.imagePaths
-        .map((path) => _PhotoViewerItem(path: path, isAsset: false))
+        .map((path) => _PhotoViewerItem(path: path))
         .toList();
 
     return Column(
@@ -860,7 +874,7 @@ class _SubmittedReviewCard extends StatelessWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: review.imagePaths.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
               itemBuilder: (context, index) {
                 return _StorePhoto(
                   path: review.imagePaths[index],
@@ -942,23 +956,20 @@ class _DummyProfile extends StatelessWidget {
 }
 
 class _PhotoTabContent extends StatelessWidget {
-  final List<String> assetImages;
+  final List<_PhotoViewerItem> storeImages;
   final List<String> submittedImagePaths;
 
   const _PhotoTabContent({
-    required this.assetImages,
+    required this.storeImages,
     required this.submittedImagePaths,
   });
 
   @override
   Widget build(BuildContext context) {
-    final assetItems = assetImages
-        .map((path) => _PhotoViewerItem(path: path, isAsset: true))
-        .toList();
     final submittedItems = submittedImagePaths
-        .map((path) => _PhotoViewerItem(path: path, isAsset: false))
+        .map((path) => _PhotoViewerItem(path: path))
         .toList();
-    final viewerItems = [...assetItems, ...submittedItems];
+    final viewerItems = [...storeImages, ...submittedItems];
     final totalCount = viewerItems.length;
 
     return Padding(
@@ -991,6 +1002,7 @@ class _PhotoTabContent extends StatelessWidget {
               return _StorePhoto(
                 path: item.path,
                 isAsset: item.isAsset,
+                isNetwork: item.isNetwork,
                 width: double.infinity,
                 height: double.infinity,
                 viewerItems: viewerItems,
@@ -1039,13 +1051,19 @@ class _DetailInfoRow extends StatelessWidget {
 class _PhotoViewerItem {
   final String path;
   final bool isAsset;
+  final bool isNetwork;
 
-  const _PhotoViewerItem({required this.path, required this.isAsset});
+  const _PhotoViewerItem({
+    required this.path,
+    this.isAsset = false,
+    this.isNetwork = false,
+  });
 }
 
 class _StorePhoto extends StatelessWidget {
   final String path;
   final bool isAsset;
+  final bool isNetwork;
   final bool isPrimary;
   final double width;
   final double height;
@@ -1054,11 +1072,12 @@ class _StorePhoto extends StatelessWidget {
 
   const _StorePhoto({
     required this.path,
-    required this.isAsset,
     required this.width,
     required this.height,
     required this.viewerItems,
     required this.initialIndex,
+    this.isAsset = false,
+    this.isNetwork = false,
     this.isPrimary = false,
   });
 
@@ -1095,13 +1114,19 @@ class _StorePhoto extends StatelessWidget {
             ? Image.asset(
                 path,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _ImageFallback(path: path),
+                errorBuilder: (_, _, _) => _ImageFallback(path: path),
               )
-            : Image.file(
-                File(path),
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _ImageFallback(path: path),
-              ),
+            : isNetwork
+                ? Image.network(
+                    path,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => _ImageFallback(path: path),
+                  )
+                : Image.file(
+                    File(path),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => _ImageFallback(path: path),
+                  ),
       ),
     );
   }
@@ -1139,14 +1164,20 @@ class _PhotoViewerDialogState extends State<_PhotoViewerDialog> {
       return Image.asset(
         item.path,
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => _ImageFallback(path: item.path),
+        errorBuilder: (_, _, _) => _ImageFallback(path: item.path),
       );
     }
-
+    if (item.isNetwork) {
+      return Image.network(
+        item.path,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => _ImageFallback(path: item.path),
+      );
+    }
     return Image.file(
       File(item.path),
       fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => _ImageFallback(path: item.path),
+      errorBuilder: (_, _, _) => _ImageFallback(path: item.path),
     );
   }
 

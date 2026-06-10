@@ -18,6 +18,8 @@ class Store {
   final int? discountRate;
   final bool isMilitaryBenefit;
   final bool isBenefitVerified;
+  final List<String> imageUrls;
+  final double? distanceKm;
 
   const Store({
     required this.id,
@@ -35,6 +37,8 @@ class Store {
     this.discountRate,
     required this.isMilitaryBenefit,
     required this.isBenefitVerified,
+    this.imageUrls = const [],
+    this.distanceKm,
   });
 
   factory Store.fromJson(Map<String, dynamic> json) {

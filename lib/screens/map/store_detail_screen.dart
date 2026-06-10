@@ -5,10 +5,15 @@ import 'package:flutter/material.dart';
 import '../../models/store.dart';
 import '../../models/store_review.dart';
 import '../../models/store_review_draft.dart';
+import '../../services/auth_service.dart';
 import '../../services/store_api.dart';
 import '../../services/store_review_api.dart';
+import '../../services/user_service.dart';
+import '../../utils/auth_expired_exception.dart';
+import '../login_screen.dart';
 import '../../theme/app_colors.dart';
-import 'review/review_start_screen.dart';
+import '../review/review_detail_screen.dart';
+import '../review/review_start_screen.dart';
 
 part '_store_detail_image.dart';
 part '_store_detail_tabs.dart';
@@ -27,12 +32,15 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
   late Store _store;
 
   bool _isFavorite = false;
+  bool _favoriteLoading = false;
   bool _loadingStore = false;
   bool _loadingReviews = false;
   int _selectedTabIndex = 0;
 
   List<StoreReview> _serverReviews = [];
   final List<SubmittedStoreReview> _submittedReviews = [];
+  Map<String, int> _goodPointCounts = {};
+  int? _currentUserId;
 
   final List<String> _fallbackImageAssets = const [
     'assets/images/store_yukhoe_1.png',
@@ -48,6 +56,8 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
     _store = widget.store;
     _loadStoreDetail();
     _loadReviews();
+    _loadFavoriteStatus();
+    _loadCurrentUserId();
   }
 
   Future<void> _loadStoreDetail() async {
@@ -81,7 +91,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
     });
 
     try {
-      final page = await StoreReviewApi.getList(
+      final result = await StoreReviewApi.getList(
         storeId: widget.store.id,
         page: 0,
         size: 10,
@@ -90,7 +100,8 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
       if (!mounted) return;
 
       setState(() {
-        _serverReviews = page.content;
+        _serverReviews = result.page.content;
+        _goodPointCounts = result.goodPointCounts;
       });
     } catch (_) {
       if (!mounted) return;
@@ -146,12 +157,46 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
     return _serverReviews.length + _submittedReviews.length;
   }
 
-  void _toggleFavorite() {
-    setState(() {
-      _isFavorite = !_isFavorite;
-    });
+  Future<void> _loadCurrentUserId() async {
+    try {
+      final data = await UserService.getMyInfo();
+      if (!mounted) return;
+      setState(() => _currentUserId = data['id'] as int?);
+    } catch (_) {}
+  }
 
-    _showSnackBar(_isFavorite ? '즐겨찾기에 저장되었습니다.' : '즐겨찾기가 해제되었습니다.');
+  Future<void> _loadFavoriteStatus() async {
+    try {
+      final favorites = await UserService.getFavorites();
+      if (!mounted) return;
+      setState(() {
+        _isFavorite = favorites.any((f) => f['id'] == _store.id);
+      });
+    } catch (_) {
+      // 비로그인 상태 등 오류 시 무시
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (_favoriteLoading) return;
+    setState(() => _favoriteLoading = true);
+
+    final willFavorite = !_isFavorite;
+    try {
+      if (willFavorite) {
+        await UserService.addFavorite(_store.id);
+      } else {
+        await UserService.removeFavorite(_store.id);
+      }
+      if (!mounted) return;
+      setState(() => _isFavorite = willFavorite);
+      _showSnackBar(willFavorite ? '즐겨찾기에 저장되었습니다.' : '즐겨찾기가 해제되었습니다.');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar('즐겨찾기 처리에 실패했습니다.');
+    } finally {
+      if (mounted) setState(() => _favoriteLoading = false);
+    }
   }
 
   Future<void> _openReviewWriteScreen() async {
@@ -162,16 +207,66 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
 
     if (result == null || !mounted) return;
 
-    setState(() {
-      _submittedReviews.insert(0, result);
-      _selectedTabIndex = 3;
-    });
-
-    _showSnackBar('리뷰가 등록되었습니다.');
+    try {
+      // 리뷰 작성 전 토큰 선제 갱신 — 설문 작성 시간 동안 만료될 수 있음
+      try {
+        await AuthService.refreshTokens();
+      } catch (_) {
+        // 갱신 실패는 create() 안에서 처리
+      }
+      await StoreReviewApi.create(storeId: _store.id, submitted: result);
+      if (!mounted) return;
+      // 서버에서 최신 목록 다시 로드
+      await _loadReviews();
+      if (!mounted) return;
+      setState(() => _selectedTabIndex = 2);
+      _showSnackBar('리뷰가 등록되었습니다.');
+    } catch (e) {
+      if (!mounted) return;
+      if (e is AuthExpiredException) {
+        await _showSessionExpiredAndLogin();
+        return;
+      }
+      // 서버 오류 시 로컬에만 표시
+      setState(() {
+        _submittedReviews.insert(0, result);
+        _selectedTabIndex = 2;
+      });
+      _showSnackBar('리뷰 등록 중 오류가 발생했습니다.');
+    }
   }
 
   void _showImageViewer(int initialIndex) {
     _openImageViewer(context, _imageItems, initialIndex);
+  }
+
+  Future<void> _showSessionExpiredAndLogin() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        content: const Text(
+          '로그인 시간이 만료되었습니다.\n다시 로그인하신 후 리뷰를 이어서 작성하실 수 있습니다.',
+          style: TextStyle(height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              '로그인하러 가기',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    PendingNavigation.returnStore = _store;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   void _showSnackBar(String message) {
@@ -239,13 +334,22 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                       index: _selectedTabIndex,
                       children: [
                         _HomeTabContent(store: _store),
-                        _MenuTabContent(store: _store),
                         _BenefitTabContent(store: _store),
                         _ReviewTabContent(
                           rating: _averageRating,
                           reviewCount: _reviewCount,
                           serverReviews: _serverReviews,
                           submittedReviews: _submittedReviews,
+                          goodPointCounts: _goodPointCounts,
+                          currentUserId: _currentUserId,
+                          onReviewUpdated: (updated) => setState(() {
+                            final idx = _serverReviews
+                                .indexWhere((r) => r.id == updated.id);
+                            if (idx >= 0) _serverReviews[idx] = updated;
+                          }),
+                          onReviewDeleted: (id) => setState(() {
+                            _serverReviews.removeWhere((r) => r.id == id);
+                          }),
                         ),
                         _PhotoTabContent(
                           images: imageItems,
@@ -293,7 +397,7 @@ class _TopBar extends StatelessWidget {
             icon: Icon(
               isFavorite ? Icons.star : Icons.star_border,
               size: 34,
-              color: isFavorite ? AppColors.secondary : AppColors.textMain,
+              color: isFavorite ? const Color(0xFFFFD600) : AppColors.textMain,
             ),
           ),
           IconButton(
@@ -393,12 +497,20 @@ class _StoreSummary extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          '★${rating.toStringAsFixed(1)}',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textSub,
+        Text.rich(
+          TextSpan(
+            children: [
+              const TextSpan(text: '⭐ '),
+              TextSpan(
+                text: rating.toStringAsFixed(1),
+                style: const TextStyle(color: Color(0xFFFF3B30)),
+              ),
+            ],
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textMain,
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -458,7 +570,7 @@ class _DetailTabs extends StatelessWidget {
 
   const _DetailTabs({required this.selectedIndex, required this.onTap});
 
-  static const tabs = ['홈', '메뉴', '군혜택', '리뷰', '사진'];
+  static const tabs = ['홈', '군혜택', '리뷰', '사진'];
 
   @override
   Widget build(BuildContext context) {

@@ -7,7 +7,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
 
   const AppHeader({
     super.key,
-    this.location = '정릉동 산16-46',
+    this.location = '포천시 신북읍',
     this.onLocationTap,
   });
 

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:milzip/screens/auth/signup_email.dart';
 import 'package:milzip/screens/home.dart';
+import 'package:milzip/screens/map/store_detail_screen.dart';
 import 'package:milzip/services/auth_service.dart';
 import 'package:milzip/services/user_service.dart';
 import 'package:milzip/theme/app_colors.dart';
+import 'package:milzip/utils/auth_expired_exception.dart';
 
 class EmailLoginScreen extends StatefulWidget {
   const EmailLoginScreen({super.key});
@@ -52,11 +54,20 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
       // 토큰 발급 직후 유저 정보 캐시 (닉네임·프로필 등)
       await UserService.getMyInfo();
       if (!mounted) return;
+      // 리뷰 작성 중 세션 만료 → 로그인 후 해당 매장으로 복귀
+      final returnStore = PendingNavigation.returnStore;
+      PendingNavigation.returnStore = null;
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
         (route) => false,
       );
+      if (returnStore != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => StoreDetailScreen(store: returnStore)),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

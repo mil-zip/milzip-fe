@@ -279,7 +279,7 @@ class _SignupMilitaryScreenState extends State<SignupMilitaryScreen> {
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryAccent),
                       )
                     : const Text(
                         '건너뛰기',

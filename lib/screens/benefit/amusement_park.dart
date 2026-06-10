@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/theme_park.dart';
+import '../../theme/app_colors.dart';
 import '../../data/theme_park_dummy.dart';
 import '../../services/amusement_park_api.dart';
 import '../../services/user_service.dart';
@@ -131,7 +132,7 @@ class _BenefitCollectionScreenState extends State<BenefitCollectionScreen> {
               if (_isLoading)
                 const SizedBox(
                   height: 300,
-                  child: Center(child: CircularProgressIndicator()),
+                  child: Center(child: CircularProgressIndicator(color: AppColors.primaryAccent)),
                 )
               else if (_error != null)
                 Padding(

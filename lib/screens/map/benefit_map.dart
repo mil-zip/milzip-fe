@@ -736,7 +736,7 @@ class _CategoryChipBar extends StatelessWidget {
                       data.label,
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         color: selected
                             ? Colors.white
                             : AppColors.primaryAccent,
@@ -901,7 +901,7 @@ class _StoreBottomSheetState extends State<_StoreBottomSheet> {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 26,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                             color: AppColors.textMain,
                           ),
                         ),
@@ -933,7 +933,7 @@ class _StoreBottomSheetState extends State<_StoreBottomSheet> {
                           store.mainBenefitDescription,
                           style: const TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w700,
                             color: AppColors.primaryAccent,
                           ),
                         ),
@@ -977,7 +977,7 @@ class _StoreBottomSheetState extends State<_StoreBottomSheet> {
                         '상세 보기',
                         style: TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -1015,7 +1015,7 @@ class _BusinessStatusBadge extends StatelessWidget {
         label,
         style: TextStyle(
           fontSize: 12,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
           color: textColor,
         ),
       ),
@@ -1052,7 +1052,7 @@ class _TmoInfoCard extends StatelessWidget {
                     tmo.name,
                     style: const TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textMain,
                     ),
                   ),
@@ -1083,7 +1083,7 @@ class _TmoInfoCard extends StatelessWidget {
                 ),
                 child: const Text(
                   '상세 보기',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ),
             ),
@@ -1157,7 +1157,7 @@ class _TmoListPanel extends StatelessWidget {
                       'TMO 목록',
                       style: TextStyle(
                         fontSize: 20,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textMain,
                       ),
                     ),
@@ -1256,7 +1256,7 @@ class _TmoListItem extends StatelessWidget {
                   displayName,
                   style: const TextStyle(
                     fontSize: 17,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.textMain,
                   ),
                 ),
@@ -1270,7 +1270,7 @@ class _TmoListItem extends StatelessWidget {
                       '현재 위치와의 거리 ${tmo.distanceLabel}',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         color: selected
                             ? AppColors.primaryAccent
                             : AppColors.textMain,
@@ -1322,7 +1322,7 @@ class _TmoStatusBadge extends StatelessWidget {
         tmo.operatingStatusLabel,
         style: TextStyle(
           fontSize: 12,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
           color: hasHours && isOpen ? AppColors.badgeText : AppColors.textSub,
         ),
       ),
@@ -1358,7 +1358,7 @@ class _InfoRow extends StatelessWidget {
               value,
               style: const TextStyle(
                 fontSize: 13,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.textMain,
               ),
             ),

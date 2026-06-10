@@ -42,9 +42,7 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
 
   void _updateButtonState() {
     setState(() {
-      _isButtonEnabled =
-          _nicknameController.text.trim().isNotEmpty &&
-          _nameController.text.trim().isNotEmpty;
+      _isButtonEnabled = _nameController.text.trim().isNotEmpty;
     });
   }
 
@@ -65,7 +63,10 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
   Future<void> _handleConfirm() async {
     setState(() => _isLoading = true);
     try {
-      final nickname = _nicknameController.text.trim();
+      final name = _nameController.text.trim();
+      final nickname = _nicknameController.text.trim().isEmpty
+          ? name
+          : _nicknameController.text.trim();
       final available = await AuthService.checkNicknameAvailability(nickname);
       if (!available) {
         if (!mounted) return;
@@ -176,7 +177,7 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  '닉네임',
+                  '닉네임 (미입력 시 이름으로 설정)',
                   style: TextStyle(fontSize: 13, color: Color(0xFFADB5BD)),
                 ),
                 Text(

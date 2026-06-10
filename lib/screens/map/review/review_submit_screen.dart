@@ -337,8 +337,6 @@ class _SubmitHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          const Icon(Icons.star_border, size: 36, color: AppColors.textMain),
-          const SizedBox(width: 18),
           IconButton(
             onPressed: onClose,
             icon: const Icon(Icons.close, size: 36, color: AppColors.textMain),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:milzip/models/store_review.dart';
 import 'package:milzip/services/auth_service.dart';
 
 class UserService {
@@ -61,6 +62,7 @@ class UserService {
   }
 
   /// GET /users/favorites — 즐겨찾기 목록
+  /// 응답의 storeId → id, storeName → name 으로 정규화
   static Future<List<Map<String, dynamic>>> getFavorites() async {
     final response = await http
         .get(
@@ -71,8 +73,17 @@ class UserService {
 
     _checkStatus(response, '즐겨찾기 조회 실패');
     final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final list = body['data'] as List? ?? [];
-    return list.cast<Map<String, dynamic>>();
+    final list = (body['data'] as List? ?? []).cast<Map<String, dynamic>>();
+    return list.map((e) {
+      final thumb = e['thumbnailUrl'] as String?;
+      return <String, dynamic>{
+        ...e,
+        'id': e['storeId'] ?? e['id'],
+        'name': e['name'] ?? e['storeName'],
+        // Store.fromJson이 imageUrls 배열을 기대하므로 변환
+        'imageUrls': thumb != null && thumb.isNotEmpty ? [thumb] : (e['imageUrls'] ?? []),
+      };
+    }).toList();
   }
 
   /// POST /users/favorites/{storeId} — 즐겨찾기 추가
@@ -174,7 +185,7 @@ class UserService {
   }
 
   /// GET /users/reviews — 내 리뷰 목록
-  static Future<List<Map<String, dynamic>>> getMyReviews({int page = 0, int size = 10}) async {
+  static Future<StoreReviewPage> getMyReviews({int page = 0, int size = 10}) async {
     final response = await http
         .get(
           Uri.parse('$_baseUrl/users/reviews?page=$page&size=$size'),
@@ -185,8 +196,7 @@ class UserService {
     _checkStatus(response, '내 리뷰 조회 실패');
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     final data = body['data'] as Map<String, dynamic>? ?? {};
-    final list = data['content'] as List? ?? [];
-    return list.cast<Map<String, dynamic>>();
+    return StoreReviewPage.fromJson(data);
   }
 
   /// PATCH /users/me/profile-image — 프로필 이미지 변경

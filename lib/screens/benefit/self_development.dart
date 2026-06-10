@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../theme/app_colors.dart';
 import '../../models/self_development.dart';
 import '../../services/self_development_api.dart';
 import '../../services/user_service.dart';
@@ -159,7 +160,7 @@ class _SelfDevelopmentSectionState extends State<SelfDevelopmentSection> {
     if (_items.isEmpty && _isLoading) {
       return const SizedBox(
         height: 300,
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: CircularProgressIndicator(color: AppColors.primaryAccent)),
       );
     }
 
@@ -227,7 +228,7 @@ class _SelfDevelopmentSectionState extends State<SelfDevelopmentSection> {
         if (_isLoading && _items.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: CircularProgressIndicator(color: AppColors.primaryAccent)),
           ),
 
         ..._items.map((item) {

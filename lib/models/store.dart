@@ -67,7 +67,7 @@ class Store {
   factory Store.fromJson(Map<String, dynamic> json) {
     return Store(
       id: json['id'] ?? 0,
-      name: json['name'] ?? '',
+      name: json['name'] ?? json['storeName'] ?? '',
       category: _parseCategory(json['category']),
       address: json['address'] ?? '',
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0,

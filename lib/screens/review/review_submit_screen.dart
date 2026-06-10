@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../models/store.dart';
-import '../../../models/store_review_draft.dart';
-import '../../../theme/app_colors.dart';
+import '../../models/store.dart';
+import '../../models/store_review_draft.dart';
+import '../../theme/app_colors.dart';
 
 class ReviewSubmitScreen extends StatefulWidget {
   final Store store;
@@ -146,7 +146,7 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
                           style: const TextStyle(
                             fontSize: 40,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFFFF5A4F),
+                            color: Color(0xFFFF3B30),
                           ),
                         ),
                         const SizedBox(width: 18),
@@ -369,7 +369,7 @@ class _StaticStarRating extends StatelessWidget {
                 child: const Icon(
                   Icons.star,
                   size: 38,
-                  color: Color(0xFFFF5A4F),
+                  color: Color(0xFFFFD600),
                 ),
               ),
             ],

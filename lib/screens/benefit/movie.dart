@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../theme/app_colors.dart';
 import '../../models/movie.dart';
 import '../../models/theater.dart';
 import '../../data/movie_dummy.dart';
@@ -176,7 +177,7 @@ class _MovieSectionState extends State<MovieSection> {
     if (_isLoading) {
       return const SizedBox(
         height: 300,
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: CircularProgressIndicator(color: AppColors.primaryAccent)),
       );
     }
 
@@ -315,7 +316,7 @@ Widget _buildPoster(Movie movie, {BoxFit fit = BoxFit.cover}) {
           child: const Center(
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              color: Colors.white54,
+              color: AppColors.primaryAccent,
             ),
           ),
         );

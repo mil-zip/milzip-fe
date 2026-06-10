@@ -197,7 +197,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: 60),
                     child: CircularProgressIndicator(
-                      color: AppColors.primary2,
+                      color: AppColors.primaryAccent,
                       strokeWidth: 2.5,
                     ),
                   ),
@@ -232,7 +232,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                     padding: EdgeInsets.symmetric(vertical: 16),
                     child: Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.primary2,
+                        color: AppColors.primaryAccent,
                         strokeWidth: 2.5,
                       ),
                     ),
@@ -277,7 +277,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.primary2,
+                  color: AppColors.primaryAccent,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
@@ -320,7 +320,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                     fontFamily: 'TmoneyRoundWind',
                     fontSize: 42,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.primary2,
+                    color: AppColors.primaryAccent,
                     height: 1.1,
                     letterSpacing: -1,
                   ),
@@ -691,7 +691,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
               if (isSelected) ...[
                 const SizedBox(width: 8),
                 const Icon(Icons.check_rounded,
-                    color: AppColors.primary2, size: 16),
+                    color: AppColors.primaryAccent, size: 16),
               ],
             ],
           ),
@@ -972,7 +972,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen>
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.primary2,
+                  color: AppColors.primaryAccent,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(

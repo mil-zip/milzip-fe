@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:milzip/models/store.dart';
+import 'package:milzip/models/store_review.dart';
 import 'package:milzip/screens/favorite_stores_screen.dart';
+import 'package:milzip/screens/map/store_detail_screen.dart';
 import 'package:milzip/screens/mypage/military_verification_screen.dart';
 import 'package:milzip/screens/mypage/password_reset_screen.dart';
+import 'package:milzip/screens/review/review_detail_screen.dart';
 import 'package:milzip/screens/saved_benefits_screen.dart';
 import 'package:milzip/services/auth_service.dart';
 import 'package:milzip/services/user_service.dart';
@@ -26,7 +30,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   List<Map<String, dynamic>> _favorites = [];
 
   // 리뷰
-  List<Map<String, dynamic>> _reviews = [];
+  List<StoreReview> _reviews = [];
 
 
   @override
@@ -45,14 +49,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
       if (!mounted) return;
       final info = results[0] as Map<String, dynamic>;
       final favs = results[1] as List<Map<String, dynamic>>;
-      final reviews = results[2] as List<Map<String, dynamic>>;
+      final reviewPage = results[2] as StoreReviewPage;
       setState(() {
         _nickname = info['nickname'] ?? '';
         _email = info['email'] ?? '';
         _militaryStatus = (info['militaryStatus'] as String?) ?? 'NOT_VERIFIED';
         _profileImageUrl = info['profileImageUrl'] as String?;
         _favorites = favs;
-        _reviews = reviews;
+        _reviews = reviewPage.content;
       });
     } catch (_) {
       // 토큰 없을 경우 등 조용히 처리
@@ -385,34 +389,71 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         separatorBuilder: (context, r) => const SizedBox(width: 10),
                         padding: EdgeInsets.zero,
                         itemBuilder: (context, index) {
-                          final store = _favorites[index];
-                          final icon = _categoryToIcon(store['category'] as String?);
-                          return SizedBox(
-                            width: 101,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 101,
-                                  height: 101,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFD0D3D8),
+                          final raw = _favorites[index];
+                          final icon = _categoryToIcon(raw['category'] as String?);
+                          final imageUrls = (raw['imageUrls'] as List?)
+                              ?.map((e) => e.toString())
+                              .toList() ?? [];
+                          final storeName =
+                              raw['name'] as String? ??
+                              raw['storeName'] as String? ?? '';
+                          final storeId = (raw['storeId'] ?? raw['id']) as int? ?? 0;
+                          return GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StoreDetailScreen(
+                                  store: Store.fromJson(<String, dynamic>{
+                                    ...raw,
+                                    'id': storeId,
+                                    'name': storeName,
+                                  }),
+                                ),
+                              ),
+                            ),
+                            child: SizedBox(
+                              width: 101,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
+                                    child: SizedBox(
+                                      width: 101,
+                                      height: 101,
+                                      child: imageUrls.isNotEmpty
+                                          ? Image.network(
+                                              imageUrls.first,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) =>
+                                                  Container(
+                                                    color: const Color(0xFFD0D3D8),
+                                                    child: Icon(icon,
+                                                        size: 32,
+                                                        color: Colors.white),
+                                                  ),
+                                            )
+                                          : Container(
+                                              color: const Color(0xFFD0D3D8),
+                                              child: Icon(icon,
+                                                  size: 32,
+                                                  color: Colors.white),
+                                            ),
+                                    ),
                                   ),
-                                  child: Icon(icon, size: 32, color: Colors.white),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  store['storeName'] as String? ?? '',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textMain,
-                                    height: 1.4,
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    storeName,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textMain,
+                                      height: 1.4,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           );
                         },
@@ -483,12 +524,28 @@ class _MyPageScreenState extends State<MyPageScreen> {
               spacing: 7,
               runSpacing: 7,
               children: _reviews.map((review) {
-                final icon = _categoryToIcon(null);
-                final imageUrls = review['imageUrls'] as List?;
-                final thumbUrl = (imageUrls != null && imageUrls.isNotEmpty)
-                    ? imageUrls.first as String
+                final thumbUrl = review.imageUrls.isNotEmpty
+                    ? review.imageUrls.first
                     : null;
-                return SizedBox(
+                return GestureDetector(
+                  onTap: () async {
+                    final result = await Navigator.push<dynamic>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ReviewDetailScreen(review: review, isOwner: true),
+                      ),
+                    );
+                    if (!mounted) return;
+                    if (result == 'deleted') {
+                      setState(() => _reviews.removeWhere((r) => r.id == review.id));
+                    } else if (result is StoreReview) {
+                      setState(() {
+                        final idx = _reviews.indexWhere((r) => r.id == result.id);
+                        if (idx >= 0) _reviews[idx] = result;
+                      });
+                    }
+                  },
+                  child: SizedBox(
                   width: (MediaQuery.of(context).size.width - 40 - 7) / 2,
                   height: 214,
                   child: Container(
@@ -504,7 +561,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           child: thumbUrl != null
                               ? Image.network(thumbUrl, fit: BoxFit.cover)
                               : Center(
-                                  child: Icon(icon, size: 40, color: Colors.white.withAlpha(180)),
+                                  child: Icon(
+                                    Icons.restaurant_rounded,
+                                    size: 40,
+                                    color: Colors.white.withAlpha(180),
+                                  ),
                                 ),
                         ),
                         Positioned(
@@ -517,14 +578,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Colors.transparent, Colors.black.withAlpha(140)],
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withAlpha(140),
+                                ],
                               ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  review['storeId']?.toString() ?? '',
+                                  '★${review.rating.toStringAsFixed(1)} · ${review.createdDateLabel}',
                                   style: const TextStyle(
                                     color: Colors.white70,
                                     fontSize: 11,
@@ -533,7 +597,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                   ),
                                 ),
                                 Text(
-                                  review['content'] as String? ?? '',
+                                  review.content,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,
@@ -550,7 +614,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       ],
                     ),
                   ),
-                );
+                  ),  // SizedBox
+                );  // GestureDetector
               }).toList(),
             ),
           ],

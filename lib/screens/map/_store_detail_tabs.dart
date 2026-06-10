@@ -27,50 +27,6 @@ class _HomeTabContent extends StatelessWidget {
   }
 }
 
-class _MenuTabContent extends StatelessWidget {
-  final Store store;
-
-  const _MenuTabContent({required this.store});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '대표 메뉴',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textMain,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Text(
-              '${store.categoryLabel} 매장',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textMain,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _BenefitTabContent extends StatelessWidget {
   final Store store;
 

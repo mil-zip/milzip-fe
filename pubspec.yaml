@@ -38,6 +38,7 @@ dependencies:
   kakao_map_plugin: ^0.4.0  # 카카오맵 플러그인
   geolocator: ^14.0.2 # 위치 권한
   http: ^1.2.1 # API 호출
+  http_parser: ^4.0.0 # multipart MIME 타입 지정
   url_launcher: ^6.2.5 # 외부 링크 열기
   geocoding: ^4.0.0
   shared_preferences: ^2.3.3

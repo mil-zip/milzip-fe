@@ -1,13 +1,22 @@
 import '../models/store.dart';
 import 'api_client.dart';
 
+class StorePageResult {
+  final List<Store> content;
+  final bool hasNext;
+
+  const StorePageResult({required this.content, required this.hasNext});
+}
+
 class StoreApi {
-  static Future<List<Store>> getList({
+  static Future<StorePageResult> getList({
     int page = 0,
     int size = 20,
     String? category,
     double? lat,
     double? lng,
+    double? radius,
+    String? keyword,
   }) async {
     final query = <String, String>{
       'page': page.toString(),
@@ -23,70 +32,26 @@ class StoreApi {
       query['lng'] = lng.toString();
     }
 
+    if (radius != null && lat != null && lng != null) {
+      query['radius'] = radius.toString();
+    }
+
+    if (keyword != null && keyword.isNotEmpty) {
+      query['keyword'] = keyword;
+    }
+
     final queryString = Uri(queryParameters: query).query;
     final data = await ApiClient.get('/stores?$queryString');
 
     final content = data['content'] as List<dynamic>? ?? [];
-
-    return content
+    final stores = content
         .map((json) => Store.fromJson(json as Map<String, dynamic>))
         .toList();
-  }
 
-  static Future<List<Store>> searchByKeyword({
-    required String keyword,
-    String? category,
-    double? lat,
-    double? lng,
-    int size = 100,
-    int maxPages = 20,
-  }) async {
-    final trimmedKeyword = keyword.trim();
-
-    if (trimmedKeyword.isEmpty) {
-      return const [];
-    }
-
-    final results = <Store>[];
-    var page = 0;
-    var hasNext = true;
-
-    while (hasNext && page < maxPages) {
-      final query = <String, String>{
-        'page': page.toString(),
-        'size': size.toString(),
-      };
-
-      if (category != null && category.isNotEmpty) {
-        query['category'] = category;
-      }
-
-      if (lat != null && lng != null) {
-        query['lat'] = lat.toString();
-        query['lng'] = lng.toString();
-      }
-
-      final queryString = Uri(queryParameters: query).query;
-      final data = await ApiClient.get('/stores?$queryString');
-
-      final content = data['content'] as List<dynamic>? ?? [];
-      final stores = content
-          .map((json) => Store.fromJson(json as Map<String, dynamic>))
-          .toList();
-
-      results.addAll(
-        stores.where((store) {
-          return store.name.contains(trimmedKeyword) ||
-              store.address.contains(trimmedKeyword) ||
-              store.categoryLabel.contains(trimmedKeyword);
-        }),
-      );
-
-      hasNext = data['hasNext'] == true;
-      page += 1;
-    }
-
-    return results;
+    return StorePageResult(
+      content: stores,
+      hasNext: data['hasNext'] == true,
+    );
   }
 
   static Future<Store> getDetail(int id) async {

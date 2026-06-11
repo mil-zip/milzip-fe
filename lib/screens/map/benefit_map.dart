@@ -10,6 +10,8 @@ import '../../theme/app_colors.dart';
 import 'store_detail_screen.dart';
 import 'tmo_detail_screen.dart';
 
+const List<double> _kRadiusOptions = [1, 3, 5, 10, 20, 50];
+
 class BenefitMapScreen extends StatefulWidget {
   const BenefitMapScreen({super.key});
 
@@ -27,33 +29,29 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
 
   final List<String> _categories = ['TMO', '음식', '숙박', 'PC방', '서비스'];
 
-  String _selectedCategory = 'TMO';
+  // null = 카테고리 미선택(전체 매장), 'TMO' = TMO 모드
+  String? _selectedCategory = 'TMO';
 
-  List<Store> _stores = [];
+  // Store pagination state
+  final List<Store> _stores = [];
+  int _storePage = 0;
+  bool _storeHasNext = false;
+  bool _loadingStores = false;
+  bool _loadingMoreStores = false;
+  String _activeKeyword = '';
+  double? _radius = 10.0; // null = 반경 선택 안함
+
   List<Tmo> _tmos = [];
+  bool _loadingTmos = false;
 
   Store? _selectedStore;
   Tmo? _selectedTmo;
 
   LatLng? _currentLatLng;
-
-  bool _loadingStores = false;
-  bool _loadingTmos = false;
   bool _permissionDialogShown = false;
 
   bool get _isTmoMode => _selectedCategory == 'TMO';
-
-  List<Store> get _filteredStores {
-    final keyword = _searchController.text.trim();
-
-    if (keyword.isEmpty) return _stores;
-
-    return _stores.where((store) {
-      return store.name.contains(keyword) ||
-          store.address.contains(keyword) ||
-          store.categoryLabel.contains(keyword);
-    }).toList();
-  }
+  bool get _isStoreMode => !_isTmoMode;
 
   List<Marker> get _markers {
     if (_isTmoMode) {
@@ -69,7 +67,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       }).toList();
     }
 
-    return _filteredStores.map((store) {
+    return _stores.map((store) {
       final selected = _selectedStore?.id == store.id;
 
       return Marker(
@@ -86,13 +84,11 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // 폴백 좌표로 즉시 데이터 로드 (위치 취득 기다리지 않음)
       if (_selectedCategory == 'TMO') {
         _loadTmoList();
       } else {
-        _loadStoresByCategory(_selectedCategory);
+        _resetAndLoadStores();
       }
-      // 위치 권한 확인 및 취득은 병렬로 처리
       _showLocationPermissionDialogIfNeeded();
     });
   }
@@ -104,18 +100,18 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     super.dispose();
   }
 
-  String? _storeCategoryApiValue(String categoryLabel) {
+  String? _storeCategoryApiValue(String? categoryLabel) {
     switch (categoryLabel) {
       case '음식':
         return 'FOOD';
       case '숙박':
         return 'ACCOMMODATION';
       case 'PC방':
-        return 'ETC';
+        return 'PC_CAFE';
       case '서비스':
-        return 'ETC';
+        return 'SERVICE';
       default:
-        return null;
+        return null; // null or unknown → 전체
     }
   }
 
@@ -243,11 +239,10 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       if (mounted) {
         _mapController?.setCenter(latLng);
         _mapController?.setLevel(5);
-        // 실제 위치로 데이터 재로드
         if (_selectedCategory == 'TMO') {
           _loadTmoList();
         } else {
-          _loadStoresByCategory(_selectedCategory);
+          _resetAndLoadStores();
         }
       }
     } catch (_) {
@@ -263,36 +258,59 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
 
   LatLng get _requestCenter => _currentLatLng ?? _fallbackCenter;
 
-  Future<void> _loadStoresByCategory(String categoryLabel) async {
-    if (categoryLabel == 'TMO') return;
+  // 카테고리 변경 또는 위치 변경 시 리스트 초기화 후 첫 페이지 로드
+  void _resetAndLoadStores({String keyword = ''}) {
+    _stores.clear();
+    _storePage = 0;
+    _storeHasNext = false;
+    _activeKeyword = keyword;
+    _loadMoreStores(isFirstPage: true);
+  }
 
-    setState(() {
-      _loadingStores = true;
-      _selectedStore = null;
-      _selectedTmo = null;
-    });
+  Future<void> _loadMoreStores({bool isFirstPage = false}) async {
+    if (!isFirstPage && (_loadingMoreStores || !_storeHasNext)) return;
+    if (isFirstPage && _loadingStores) return;
+
+    if (isFirstPage) {
+      setState(() {
+        _loadingStores = true;
+        _selectedStore = null;
+        _selectedTmo = null;
+      });
+    } else {
+      setState(() {
+        _loadingMoreStores = true;
+      });
+    }
 
     try {
       final center = _requestCenter;
 
-      final stores = await StoreApi.getList(
-        page: 0,
-        size: 50,
-        category: _storeCategoryApiValue(categoryLabel),
+      final isKeywordSearch = _activeKeyword.isNotEmpty;
+
+      final result = await StoreApi.getList(
+        page: _storePage,
+        size: 20,
+        category: _storeCategoryApiValue(_selectedCategory),
         lat: center.latitude,
         lng: center.longitude,
+        // 키워드 검색 시 radius 미전송 → 전국 검색 (거리순만 적용)
+        // 일반 목록 조회 시 _radius가 null이면 반경 필터 없이 전체 조회
+        radius: isKeywordSearch ? null : _radius,
+        keyword: isKeywordSearch ? _activeKeyword : null,
       );
 
       if (!mounted) return;
 
       setState(() {
-        _stores = stores;
+        _stores.addAll(result.content);
+        _storeHasNext = result.hasNext;
+        _storePage += 1;
       });
 
-      if (stores.isNotEmpty) {
-        final first = stores.first;
-        _mapController?.setCenter(LatLng(first.latitude, first.longitude));
-        _mapController?.setLevel(4);
+      if (isFirstPage && result.content.isNotEmpty) {
+        _mapController?.setCenter(_requestCenter);
+        _mapController?.setLevel(7);
       }
     } catch (_) {
       if (!mounted) return;
@@ -301,6 +319,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       if (mounted) {
         setState(() {
           _loadingStores = false;
+          _loadingMoreStores = false;
         });
       }
     }
@@ -374,64 +393,87 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       return;
     }
 
-    var results = _filteredStores;
-
-    if (results.isEmpty) {
-      setState(() {
-        _loadingStores = true;
-        _selectedStore = null;
-      });
-
-      try {
-        final center = _requestCenter;
-
-        results = await StoreApi.searchByKeyword(
-          keyword: keyword,
-          category: _storeCategoryApiValue(_selectedCategory),
-          lat: center.latitude,
-          lng: center.longitude,
-        );
-
-        if (!mounted) return;
-
-        if (results.isNotEmpty) {
-          setState(() {
-            final existingIds = _stores.map((store) => store.id).toSet();
-            final newStores = results
-                .where((store) => !existingIds.contains(store.id))
-                .toList();
-
-            _stores = [...results, ...newStores, ..._stores];
-          });
-        }
-      } catch (_) {
-        if (!mounted) return;
-        _showSnackBar('검색 중 오류가 발생했습니다.');
-        return;
-      } finally {
-        if (mounted) {
-          setState(() {
-            _loadingStores = false;
-          });
-        }
-      }
-    }
-
-    if (results.isEmpty) {
-      _showSnackBar('검색 결과가 없습니다.');
-      return;
-    }
-
-    final target = results.first;
-
-    setState(() {
-      _selectedStore = target;
-      _selectedTmo = null;
-    });
-
-    _mapController?.setCenter(LatLng(target.latitude, target.longitude));
-    _mapController?.setLevel(4);
+    // 매장 검색: 현재 위치 반경 내에서 API 키워드 검색
+    _resetAndLoadStores(keyword: keyword);
   }
+
+  // ── CustomOverlay (핀 라벨) ─────────────────────────────────────────────
+
+  String _storeOverlayHtml(Store store) {
+    final name = store.name
+        .replaceAll("'", "\\'")
+        .replaceAll('"', '&quot;')
+        .replaceAll('<', '&lt;');
+    final cat = store.categoryLabel;
+    final dist = store.distanceKm != null ? store.distanceLabel : '';
+    final distHtml = dist.isNotEmpty
+        ? '<span style="color:#5B8E63;font-weight:600;font-size:11px;margin-left:6px;">$dist</span>'
+        : '';
+
+    return '''
+<div style="
+  position:relative;
+  display:inline-flex;
+  flex-direction:column;
+  align-items:center;
+">
+  <div style="
+    background:white;
+    border-radius:14px;
+    padding:9px 14px 9px 10px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.18),0 1px 4px rgba(0,0,0,0.08);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    white-space:nowrap;
+    border:1.5px solid #e2ede4;
+  ">
+    <div style="
+      background:#5B8E63;
+      border-radius:50%;
+      width:26px;height:26px;
+      display:flex;align-items:center;justify-content:center;
+      flex-shrink:0;
+    ">
+      <svg width='13' height='13' viewBox='0 0 24 24' fill='white'>
+        <path d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/>
+      </svg>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:#1a1a1a;line-height:1.3;font-family:-apple-system,sans-serif;">$name</div>
+      <div style="font-size:11px;color:#888;font-weight:500;font-family:-apple-system,sans-serif;">$cat$distHtml</div>
+    </div>
+  </div>
+  <div style="
+    width:0;height:0;
+    border-left:7px solid transparent;
+    border-right:7px solid transparent;
+    border-top:8px solid white;
+    margin-top:-1px;
+    filter:drop-shadow(0 2px 2px rgba(0,0,0,0.06));
+  "></div>
+</div>''';
+  }
+
+  void _showStoreOverlay(Store store) {
+    _mapController?.clearCustomOverlay();
+    _mapController?.addCustomOverlay(
+      customOverlays: [
+        CustomOverlay(
+          customOverlayId: 'store_label',
+          latLng: LatLng(store.latitude, store.longitude),
+          content: _storeOverlayHtml(store),
+          yAnchor: 1.08,
+        ),
+      ],
+    );
+  }
+
+  void _clearStoreOverlay() {
+    _mapController?.clearCustomOverlay();
+  }
+
+  // ── 마커 탭 ─────────────────────────────────────────────────────────────
 
   void _onMarkerTap(String markerId) {
     if (markerId.startsWith('tmo_')) {
@@ -445,6 +487,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
         _selectedStore = null;
       });
 
+      _clearStoreOverlay();
       _mapController?.setCenter(LatLng(tmo.latitude, tmo.longitude));
       return;
     }
@@ -460,6 +503,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
         _selectedTmo = null;
       });
 
+      _showStoreOverlay(store);
       _mapController?.setCenter(LatLng(store.latitude, store.longitude));
     }
   }
@@ -480,17 +524,21 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
   }
 
   Future<void> _handleCategorySelected(String category) async {
+    // TMO가 아닌 카테고리를 이미 선택된 상태에서 다시 탭 → 해제(전체)
+    final deselect = category != 'TMO' && _selectedCategory == category;
+    final next = deselect ? null : category;
+
     setState(() {
-      _selectedCategory = category;
+      _selectedCategory = next;
       _searchController.clear();
       _selectedStore = null;
       _selectedTmo = null;
     });
 
-    if (category == 'TMO') {
+    if (next == 'TMO') {
       await _loadTmoList();
     } else {
-      await _loadStoresByCategory(category);
+      _resetAndLoadStores();
     }
   }
 
@@ -500,7 +548,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     if (_isTmoMode) {
       await _loadTmoList();
     } else {
-      await _loadStoresByCategory(_selectedCategory);
+      _resetAndLoadStores(keyword: _activeKeyword);
     }
   }
 
@@ -524,6 +572,62 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
             _onMarkerTap(markerId);
           },
         ),
+
+        // ── 매장 목록 패널 (StoreBottomSheet 보다 먼저 렌더 → 아래에 위치)
+        if (_isStoreMode)
+          _StoreListPanel(
+            stores: _stores,
+            selectedStore: _selectedStore,
+            loading: _loadingStores,
+            loadingMore: _loadingMoreStores,
+            hasNext: _storeHasNext,
+            categoryLabel: _selectedCategory,
+            activeKeyword: _activeKeyword,
+            radius: _radius,
+            onRadiusChanged: (r) {
+              setState(() => _radius = r);
+              _resetAndLoadStores(keyword: _activeKeyword);
+            }, // r == null → 선택 안함
+            onLoadMore: () => _loadMoreStores(),
+            onTapStore: (store) {
+              // 목록 아이템 탭 → 선택 + 지도 이동 + overlay 표시
+              setState(() {
+                _selectedStore = store;
+                _selectedTmo = null;
+              });
+              _showStoreOverlay(store);
+              _mapController?.setCenter(LatLng(store.latitude, store.longitude));
+              _mapController?.setLevel(5);
+            },
+            onOpenDetail: (store) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => StoreDetailScreen(store: store),
+                ),
+              );
+            },
+          ),
+
+        // ── 핀 탭 시 상세 바텀시트 (목록 패널 위에 올라옴)
+        if (_selectedStore != null && _isStoreMode)
+          _StoreBottomSheet(
+            store: _selectedStore!,
+            onClose: () {
+              setState(() => _selectedStore = null);
+              _clearStoreOverlay();
+            },
+            onDetailTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => StoreDetailScreen(store: _selectedStore!),
+                ),
+              );
+            },
+          ),
+
+        // ── 검색 / 카테고리 칩
         Positioned(
           top: 22,
           left: 24,
@@ -533,6 +637,13 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
               _MapSearchField(
                 controller: _searchController,
                 onSubmitted: (_) => _runSearch(),
+                onSearch: _runSearch,
+                onClear: () {
+                  _searchController.clear();
+                  if (_activeKeyword.isNotEmpty) {
+                    _resetAndLoadStores();
+                  }
+                },
               ),
               const SizedBox(height: 18),
               _CategoryChipBar(
@@ -543,6 +654,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
             ],
           ),
         ),
+
         if (loading)
           const Positioned(
             top: 0,
@@ -554,9 +666,11 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
               color: AppColors.primaryAccent,
             ),
           ),
+
+        // ── 현재 위치 버튼
         Positioned(
           right: 18,
-          bottom: _isTmoMode ? 270 : 24,
+          bottom: 270,
           child: FloatingActionButton.small(
             heroTag: 'current_location',
             backgroundColor: Colors.white,
@@ -566,23 +680,8 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
             child: const Icon(Icons.my_location_outlined),
           ),
         ),
-        if (_selectedStore != null && !_isTmoMode)
-          _StoreBottomSheet(
-            store: _selectedStore!,
-            onClose: () {
-              setState(() {
-                _selectedStore = null;
-              });
-            },
-            onDetailTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => StoreDetailScreen(store: _selectedStore!),
-                ),
-              );
-            },
-          ),
+
+        // ── TMO 선택 카드
         if (_selectedTmo != null)
           Positioned(
             left: 22,
@@ -605,6 +704,8 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
               },
             ),
           ),
+
+        // ── TMO 목록 패널
         if (_isTmoMode)
           _TmoListPanel(
             controller: _sheetController,
@@ -614,7 +715,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
               setState(() {
                 _selectedTmo = null;
               });
-
               _mapController?.setCenter(LatLng(tmo.latitude, tmo.longitude));
               _mapController?.setLevel(5);
             },
@@ -630,11 +730,46 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
   }
 }
 
-class _MapSearchField extends StatelessWidget {
+// ---------------------------------------------------------------------------
+// Search field
+// ---------------------------------------------------------------------------
+
+class _MapSearchField extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<String> onSubmitted;
+  final VoidCallback onSearch;
+  final VoidCallback onClear;
 
-  const _MapSearchField({required this.controller, required this.onSubmitted});
+  const _MapSearchField({
+    required this.controller,
+    required this.onSubmitted,
+    required this.onSearch,
+    required this.onClear,
+  });
+
+  @override
+  State<_MapSearchField> createState() => _MapSearchFieldState();
+}
+
+class _MapSearchFieldState extends State<_MapSearchField> {
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  void _onTextChanged() {
+    final has = widget.controller.text.isNotEmpty;
+    if (has != _hasText) setState(() => _hasText = has);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -644,40 +779,88 @@ class _MapSearchField extends StatelessWidget {
         color: Colors.white.withOpacity(0.96),
         borderRadius: BorderRadius.circular(32),
       ),
-      child: TextField(
-        controller: controller,
-        textInputAction: TextInputAction.search,
-        onSubmitted: onSubmitted,
-        decoration: const InputDecoration(
-          hintText: '검색하기',
-          hintStyle: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textSub,
-          ),
-          prefixIcon: Padding(
+      child: Row(
+        children: [
+          const Padding(
             padding: EdgeInsets.only(left: 18, right: 10),
-            child: Icon(Icons.search, color: AppColors.primaryAccent, size: 30),
+            child: Icon(
+              Icons.search,
+              color: AppColors.primaryAccent,
+              size: 30,
+            ),
           ),
-          prefixIconConstraints: BoxConstraints(minWidth: 64),
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 19),
-        ),
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-          color: AppColors.textMain,
-        ),
+          Expanded(
+            child: TextField(
+              controller: widget.controller,
+              textInputAction: TextInputAction.search,
+              onSubmitted: widget.onSubmitted,
+              decoration: const InputDecoration(
+                hintText: '매장명으로 검색',
+                hintStyle: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSub,
+                ),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 19),
+              ),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textMain,
+              ),
+            ),
+          ),
+          if (_hasText) ...[
+            GestureDetector(
+              onTap: widget.onClear,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(
+                  Icons.cancel,
+                  color: AppColors.textSub,
+                  size: 22,
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: widget.onSearch,
+              child: Container(
+                margin: const EdgeInsets.only(right: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryAccent,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  '검색',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
 }
 
+// ---------------------------------------------------------------------------
+// Category chip bar
+// ---------------------------------------------------------------------------
+
 class _CategoryChipBar extends StatelessWidget {
   final List<String> categories;
-  final String selectedCategory;
+  final String? selectedCategory; // null = 미선택
   final ValueChanged<String> onSelected;
 
   const _CategoryChipBar({
@@ -689,10 +872,7 @@ class _CategoryChipBar extends StatelessWidget {
   _CategoryChipData _dataFor(String category) {
     switch (category) {
       case '음식':
-        return const _CategoryChipData(
-          icon: Icons.restaurant_menu,
-          label: '음식',
-        );
+        return const _CategoryChipData(icon: Icons.restaurant_menu, label: '음식');
       case '숙박':
         return const _CategoryChipData(icon: Icons.hotel_outlined, label: '숙박');
       case 'PC방':
@@ -706,12 +886,9 @@ class _CategoryChipBar extends StatelessWidget {
           label: '서비스',
         );
       case 'TMO':
-        return const _CategoryChipData(
-          icon: Icons.train_outlined,
-          label: 'TMO',
-        );
+        return const _CategoryChipData(icon: Icons.train_outlined, label: 'TMO');
       default:
-        return _CategoryChipData(icon: Icons.circle_outlined, label: category);
+        return _CategoryChipData(label: category);
     }
   }
 
@@ -722,7 +899,7 @@ class _CategoryChipBar extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           final category = categories[index];
           final selected = selectedCategory == category;
@@ -735,7 +912,7 @@ class _CategoryChipBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(999),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 18),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: selected ? AppColors.primary2 : Colors.white,
@@ -744,20 +921,22 @@ class _CategoryChipBar extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      data.icon,
-                      size: 21,
-                      color: selected ? Colors.white : AppColors.primaryAccent,
-                    ),
-                    const SizedBox(width: 7),
+                    if (data.icon != null) ...[
+                      Icon(
+                        data.icon,
+                        size: 19,
+                        color:
+                            selected ? Colors.white : AppColors.primaryAccent,
+                      ),
+                      const SizedBox(width: 6),
+                    ],
                     Text(
                       data.label,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: selected
-                            ? Colors.white
-                            : AppColors.primaryAccent,
+                        color:
+                            selected ? Colors.white : AppColors.primaryAccent,
                       ),
                     ),
                   ],
@@ -772,11 +951,365 @@ class _CategoryChipBar extends StatelessWidget {
 }
 
 class _CategoryChipData {
-  final IconData icon;
+  final IconData? icon;
   final String label;
 
-  const _CategoryChipData({required this.icon, required this.label});
+  const _CategoryChipData({this.icon, required this.label});
 }
+
+// ---------------------------------------------------------------------------
+// Store list panel (infinite scroll)
+// ---------------------------------------------------------------------------
+
+class _StoreListPanel extends StatefulWidget {
+  final List<Store> stores;
+  final Store? selectedStore;
+  final bool loading;
+  final bool loadingMore;
+  final bool hasNext;
+  final String? categoryLabel;
+  final String activeKeyword;
+  final double? radius;
+  final ValueChanged<double?> onRadiusChanged;
+  final VoidCallback onLoadMore;
+  final ValueChanged<Store> onTapStore;
+  final ValueChanged<Store> onOpenDetail;
+
+  const _StoreListPanel({
+    required this.stores,
+    required this.selectedStore,
+    required this.loading,
+    required this.loadingMore,
+    required this.hasNext,
+    required this.categoryLabel,
+    required this.activeKeyword,
+    required this.radius,
+    required this.onRadiusChanged,
+    required this.onLoadMore,
+    required this.onTapStore,
+    required this.onOpenDetail,
+  });
+
+  @override
+  State<_StoreListPanel> createState() => _StoreListPanelState();
+}
+
+class _StoreListPanelState extends State<_StoreListPanel> {
+  ScrollController? _scrollController;
+
+  void _onScroll() {
+    final sc = _scrollController;
+    if (sc == null || !sc.hasClients) return;
+    if (sc.position.pixels >= sc.position.maxScrollExtent - 300) {
+      widget.onLoadMore();
+    }
+  }
+
+  void _attachController(ScrollController controller) {
+    if (_scrollController == controller) return;
+    _scrollController?.removeListener(_onScroll);
+    _scrollController = controller;
+    _scrollController!.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController?.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  String get _headerTitle {
+    if (widget.activeKeyword.isNotEmpty) {
+      return '"${widget.activeKeyword}" 검색 결과';
+    }
+    if (widget.categoryLabel == null || widget.categoryLabel!.isEmpty) {
+      return '전체 매장';
+    }
+    return widget.categoryLabel!;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      minChildSize: 0.16,
+      initialChildSize: 0.38,
+      maxChildSize: 0.86,
+      snap: true,
+      snapSizes: const [0.16, 0.38, 0.86],
+      builder: (context, scrollController) {
+        _attachController(scrollController);
+
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 16,
+                offset: Offset(0, -4),
+              ),
+            ],
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+            children: [
+              // 핸들
+              Center(
+                child: Container(
+                  width: 54,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD4D4D4),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // 제목 + 정렬
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _headerTitle,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textMain,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.sort, size: 18, color: AppColors.textSub),
+                  const SizedBox(width: 4),
+                  const Text(
+                    '거리순',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSub,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // 반경 드롭다운 (키워드 검색 중엔 숨김)
+              if (widget.activeKeyword.isEmpty)
+                Row(
+                  children: [
+                    const Icon(Icons.radar, size: 16, color: AppColors.textSub),
+                    const SizedBox(width: 6),
+                    const Text(
+                      '반경',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSub,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      height: 34,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F4F2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<double?>(
+                          value: widget.radius,
+                          isDense: true,
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 18,
+                            color: AppColors.textSub,
+                          ),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textMain,
+                          ),
+                          items: [
+                            const DropdownMenuItem<double?>(
+                              value: null,
+                              child: Text('선택 안함'),
+                            ),
+                            ..._kRadiusOptions.map((r) {
+                              return DropdownMenuItem<double?>(
+                                value: r,
+                                child: Text('${r.toInt()}km'),
+                              );
+                            }),
+                          ],
+                          onChanged: (r) => widget.onRadiusChanged(r),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 14),
+
+              // 목록
+              if (widget.loading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 40),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primaryAccent,
+                      strokeWidth: 2.5,
+                    ),
+                  ),
+                )
+              else if (widget.stores.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 40),
+                  child: Center(
+                    child: Text(
+                      '주변에 해당 매장이 없습니다.',
+                      style: TextStyle(
+                        color: AppColors.textSub,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                )
+              else ...[
+                ...widget.stores.map((store) {
+                  final selected = widget.selectedStore?.id == store.id;
+                  return _StoreListItem(
+                    store: store,
+                    selected: selected,
+                    onTap: () => widget.onTapStore(store),
+                    onOpenDetail: () => widget.onOpenDetail(store),
+                  );
+                }),
+                if (widget.loadingMore)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryAccent,
+                        strokeWidth: 2.5,
+                      ),
+                    ),
+                  ),
+                if (!widget.hasNext && widget.stores.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Center(
+                      child: Text(
+                        widget.radius != null
+                            ? '반경 ${widget.radius!.toInt()}km 내 모든 매장을 불러왔습니다.'
+                            : '모든 매장을 불러왔습니다.',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSub,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StoreListItem extends StatelessWidget {
+  final Store store;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback onOpenDetail;
+
+  const _StoreListItem({
+    required this.store,
+    required this.selected,
+    required this.onTap,
+    required this.onOpenDetail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.surfaceSoft : Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: selected
+                ? Border.all(color: AppColors.border)
+                : Border.all(color: Colors.transparent),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.location_on,
+                color: selected
+                    ? AppColors.primaryAccent
+                    : const Color(0xFFB8B8B8),
+                size: 30,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      store.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: selected
+                            ? AppColors.primaryAccent
+                            : AppColors.textMain,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      [
+                        store.categoryLabel,
+                        if (store.distanceKm != null) store.distanceLabel,
+                        if (store.maxDiscountRate != null)
+                          '최대 ${store.maxDiscountRate}% 할인',
+                      ].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSub,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: onOpenDetail,
+                icon: const Icon(Icons.chevron_right, size: 28),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Store bottom sheet (pin tap)
+// ---------------------------------------------------------------------------
 
 class _StoreBottomSheet extends StatefulWidget {
   final Store store;
@@ -1040,6 +1573,10 @@ class _BusinessStatusBadge extends StatelessWidget {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// TMO info card & list panel (unchanged)
+// ---------------------------------------------------------------------------
 
 class _TmoInfoCard extends StatelessWidget {
   final Tmo tmo;
@@ -1386,6 +1923,10 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Permission dialog helpers
+// ---------------------------------------------------------------------------
 
 class _PermissionIllustration extends StatelessWidget {
   final IconData icon;

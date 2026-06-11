@@ -105,6 +105,8 @@ class Store {
       case 'ACCOMMODATION':
         return StoreCategory.accommodation;
       case 'ETC':
+      case 'PC_CAFE':
+      case 'SERVICE':
         return StoreCategory.etc;
       case 'TMO':
         return StoreCategory.tmo;

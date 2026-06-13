@@ -46,24 +46,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
       _redirectToLogin();
       return;
     }
+
+    // 내 정보는 반드시 성공해야 함 — 실패 시 로그인으로 이동
+    Map<String, dynamic> info;
     try {
-      final results = await Future.wait([
-        UserService.getMyInfo(),
-        UserService.getFavorites(),
-        UserService.getMyReviews(),
-      ]);
-      if (!mounted) return;
-      final info = results[0] as Map<String, dynamic>;
-      final favs = results[1] as List<Map<String, dynamic>>;
-      final reviewPage = results[2] as StoreReviewPage;
-      setState(() {
-        _nickname = info['nickname'] ?? '';
-        _email = info['email'] ?? '';
-        _militaryStatus = (info['militaryStatus'] as String?) ?? 'NOT_VERIFIED';
-        _profileImageUrl = info['profileImageUrl'] as String?;
-        _favorites = favs;
-        _reviews = reviewPage.content;
-      });
+      info = await UserService.getMyInfo();
     } catch (e) {
       if (!mounted) return;
       final msg = e.toString();
@@ -71,7 +58,33 @@ class _MyPageScreenState extends State<MyPageScreen> {
         await AuthService.clearTokens();
         _redirectToLogin();
       }
+      return;
     }
+
+    if (!mounted) return;
+    setState(() {
+      _nickname = info['nickname'] ?? '';
+      _email = info['email'] ?? '';
+      _militaryStatus = (info['militaryStatus'] as String?) ?? 'NOT_VERIFIED';
+      _profileImageUrl = info['profileImageUrl'] as String?;
+    });
+
+    // 즐겨찾기·리뷰는 실패해도 프로필은 이미 표시됨
+    List<Map<String, dynamic>> favs = [];
+    List<StoreReview> reviews = [];
+    try {
+      favs = await UserService.getFavorites();
+    } catch (_) {}
+    try {
+      final reviewPage = await UserService.getMyReviews();
+      reviews = reviewPage.content;
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() {
+      _favorites = favs;
+      _reviews = reviews;
+    });
   }
 
   void _redirectToLogin() {
@@ -109,6 +122,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
       final data = await UserService.updateProfileImage(bytes);
       if (mounted) {
         setState(() => _profileImageUrl = data['profileImageUrl'] as String?);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('프로필 사진이 변경되었습니다.')),
+        );
       }
     } catch (e) {
       if (!mounted) return;

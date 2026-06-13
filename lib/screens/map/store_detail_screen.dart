@@ -196,7 +196,9 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
       if (!mounted) return;
       _showSnackBar('즐겨찾기 처리에 실패했습니다.');
     } finally {
-      if (mounted) setState(() => _favoriteLoading = false);
+      if (mounted) {
+        setState(() => _favoriteLoading = false);
+      }
     }
   }
 
@@ -209,7 +211,6 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
     if (result == null || !mounted) return;
 
     try {
-      // 리뷰 작성 전 토큰 선제 갱신 — 설문 작성 시간 동안 만료될 수 있음
       try {
         await AuthService.refreshTokens();
       } catch (_) {
@@ -217,7 +218,6 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
       }
       await StoreReviewApi.create(storeId: _store.id, submitted: result);
       if (!mounted) return;
-      // 서버에서 최신 목록 다시 로드
       await _loadReviews();
       if (!mounted) return;
       setState(() => _selectedTabIndex = 2);
@@ -228,7 +228,6 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
         await _showSessionExpiredAndLogin();
         return;
       }
-      // 서버 오류 시 로컬에만 표시
       setState(() {
         _submittedReviews.insert(0, result);
         _selectedTabIndex = 2;
@@ -256,7 +255,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
             onPressed: () => Navigator.pop(ctx),
             child: const Text(
               '로그인하러 가기',
-              style: TextStyle(fontWeight: FontWeight.w900),
+              style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -281,6 +280,40 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       ),
     );
+  }
+
+  Widget _buildSelectedTabContent(List<_StoreImageItem> imageItems) {
+    switch (_selectedTabIndex) {
+      case 0:
+        return _HomeTabContent(store: _store);
+      case 1:
+        return _BenefitTabContent(store: _store);
+      case 2:
+        return _ReviewTabContent(
+          rating: _averageRating,
+          reviewCount: _reviewCount,
+          serverReviews: _serverReviews,
+          submittedReviews: _submittedReviews,
+          goodPointCounts: _goodPointCounts,
+          currentUserId: _currentUserId,
+          onReviewUpdated: (updated) => setState(() {
+            final idx = _serverReviews.indexWhere((r) => r.id == updated.id);
+            if (idx >= 0) {
+              _serverReviews[idx] = updated;
+            }
+          }),
+          onReviewDeleted: (id) => setState(() {
+            _serverReviews.removeWhere((r) => r.id == id);
+          }),
+        );
+      case 3:
+        return _PhotoTabContent(
+          images: imageItems,
+          onImageTap: _showImageViewer,
+        );
+      default:
+        return _HomeTabContent(store: _store);
+    }
   }
 
   @override
@@ -331,32 +364,12 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                         });
                       },
                     ),
-                    IndexedStack(
-                      index: _selectedTabIndex,
-                      children: [
-                        _HomeTabContent(store: _store),
-                        _BenefitTabContent(store: _store),
-                        _ReviewTabContent(
-                          rating: _averageRating,
-                          reviewCount: _reviewCount,
-                          serverReviews: _serverReviews,
-                          submittedReviews: _submittedReviews,
-                          goodPointCounts: _goodPointCounts,
-                          currentUserId: _currentUserId,
-                          onReviewUpdated: (updated) => setState(() {
-                            final idx = _serverReviews
-                                .indexWhere((r) => r.id == updated.id);
-                            if (idx >= 0) _serverReviews[idx] = updated;
-                          }),
-                          onReviewDeleted: (id) => setState(() {
-                            _serverReviews.removeWhere((r) => r.id == id);
-                          }),
-                        ),
-                        _PhotoTabContent(
-                          images: imageItems,
-                          onImageTap: _showImageViewer,
-                        ),
-                      ],
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      child: KeyedSubtree(
+                        key: ValueKey(_selectedTabIndex),
+                        child: _buildSelectedTabContent(imageItems),
+                      ),
                     ),
                   ],
                 ),
@@ -411,7 +424,6 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-
 class _StoreSummary extends StatelessWidget {
   final Store store;
   final double rating;
@@ -436,8 +448,8 @@ class _StoreSummary extends StatelessWidget {
                 store.name,
                 softWrap: true,
                 style: const TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w900,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.textMain,
                   height: 1.15,
                 ),
@@ -461,13 +473,13 @@ class _StoreSummary extends StatelessWidget {
                 ),
                 child: const Text(
                   '리뷰 작성',
-                  style: TextStyle(fontWeight: FontWeight.w900),
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
         Row(
           children: [
             const Icon(
@@ -481,19 +493,19 @@ class _StoreSummary extends StatelessWidget {
                 store.mainBenefitDescription,
                 style: const TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.primaryAccent,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Text(
           '현재 영업 중 · ${store.closeTimeLabel}',
           style: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             color: AppColors.textSub,
           ),
         ),
@@ -509,7 +521,7 @@ class _StoreSummary extends StatelessWidget {
             ],
             style: const TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: AppColors.textMain,
             ),
           ),
@@ -520,9 +532,7 @@ class _StoreSummary extends StatelessWidget {
             final name = Uri.encodeComponent(store.name);
             final lat = store.latitude;
             final lng = store.longitude;
-            final appUrl = Uri.parse(
-              'kakaomap://route?ep=$lat,$lng&by=FOOT',
-            );
+            final appUrl = Uri.parse('kakaomap://route?ep=$lat,$lng&by=FOOT');
             final webUrl = Uri.parse(
               'https://map.kakao.com/link/to/$name,$lat,$lng',
             );
@@ -551,7 +561,7 @@ class _StoreSummary extends StatelessWidget {
                   '카카오맵으로 길찾기',
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: Color(0xFF191919),
                   ),
                 ),
@@ -632,7 +642,7 @@ class _DetailTabs extends StatelessWidget {
                       tabs[index],
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         color: selected
                             ? AppColors.textMain
                             : AppColors.textSub,

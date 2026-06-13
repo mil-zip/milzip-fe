@@ -29,17 +29,15 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
 
   final List<String> _categories = ['TMO', '음식', '숙박', 'PC방', '서비스'];
 
-  // null = 카테고리 미선택(전체 매장), 'TMO' = TMO 모드
   String? _selectedCategory = 'TMO';
 
-  // Store pagination state
   final List<Store> _stores = [];
   int _storePage = 0;
   bool _storeHasNext = false;
   bool _loadingStores = false;
   bool _loadingMoreStores = false;
   String _activeKeyword = '';
-  double? _radius = 10.0; // null = 반경 선택 안함
+  double? _radius = 10.0;
 
   List<Tmo> _tmos = [];
   bool _loadingTmos = false;
@@ -111,7 +109,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       case '서비스':
         return 'SERVICE';
       default:
-        return null; // null or unknown → 전체
+        return null;
     }
   }
 
@@ -258,7 +256,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
 
   LatLng get _requestCenter => _currentLatLng ?? _fallbackCenter;
 
-  // 카테고리 변경 또는 위치 변경 시 리스트 초기화 후 첫 페이지 로드
   void _resetAndLoadStores({String keyword = ''}) {
     _stores.clear();
     _storePage = 0;
@@ -285,7 +282,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
 
     try {
       final center = _requestCenter;
-
       final isKeywordSearch = _activeKeyword.isNotEmpty;
 
       final result = await StoreApi.getList(
@@ -294,8 +290,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
         category: _storeCategoryApiValue(_selectedCategory),
         lat: center.latitude,
         lng: center.longitude,
-        // 키워드 검색 시 radius 미전송 → 전국 검색 (거리순만 적용)
-        // 일반 목록 조회 시 _radius가 null이면 반경 필터 없이 전체 조회
         radius: isKeywordSearch ? null : _radius,
         keyword: isKeywordSearch ? _activeKeyword : null,
       );
@@ -393,11 +387,8 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       return;
     }
 
-    // 매장 검색: 현재 위치 반경 내에서 API 키워드 검색
     _resetAndLoadStores(keyword: keyword);
   }
-
-  // ── CustomOverlay (핀 라벨) ─────────────────────────────────────────────
 
   String _storeOverlayHtml(Store store) {
     final name = store.name
@@ -473,8 +464,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     _mapController?.clearCustomOverlay();
   }
 
-  // ── 마커 탭 ─────────────────────────────────────────────────────────────
-
   void _onMarkerTap(String markerId) {
     if (markerId.startsWith('tmo_')) {
       final id = int.tryParse(markerId.replaceFirst('tmo_', ''));
@@ -524,7 +513,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
   }
 
   Future<void> _handleCategorySelected(String category) async {
-    // TMO가 아닌 카테고리를 이미 선택된 상태에서 다시 탭 → 해제(전체)
     final deselect = category != 'TMO' && _selectedCategory == category;
     final next = deselect ? null : category;
 
@@ -572,8 +560,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
             _onMarkerTap(markerId);
           },
         ),
-
-        // ── 매장 목록 패널 (StoreBottomSheet 보다 먼저 렌더 → 아래에 위치)
         if (_isStoreMode)
           _StoreListPanel(
             stores: _stores,
@@ -587,16 +573,17 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
             onRadiusChanged: (r) {
               setState(() => _radius = r);
               _resetAndLoadStores(keyword: _activeKeyword);
-            }, // r == null → 선택 안함
+            },
             onLoadMore: () => _loadMoreStores(),
             onTapStore: (store) {
-              // 목록 아이템 탭 → 선택 + 지도 이동 + overlay 표시
               setState(() {
                 _selectedStore = store;
                 _selectedTmo = null;
               });
               _showStoreOverlay(store);
-              _mapController?.setCenter(LatLng(store.latitude, store.longitude));
+              _mapController?.setCenter(
+                LatLng(store.latitude, store.longitude),
+              );
               _mapController?.setLevel(5);
             },
             onOpenDetail: (store) {
@@ -608,8 +595,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
               );
             },
           ),
-
-        // ── 핀 탭 시 상세 바텀시트 (목록 패널 위에 올라옴)
         if (_selectedStore != null && _isStoreMode)
           _StoreBottomSheet(
             store: _selectedStore!,
@@ -617,8 +602,8 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
               setState(() => _selectedStore = null);
               _clearStoreOverlay();
             },
-            onDetailTap: () {
-              Navigator.push(
+            onDetailTap: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => StoreDetailScreen(store: _selectedStore!),
@@ -626,8 +611,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
               );
             },
           ),
-
-        // ── 검색 / 카테고리 칩
         Positioned(
           top: 22,
           left: 24,
@@ -654,7 +637,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
             ],
           ),
         ),
-
         if (loading)
           const Positioned(
             top: 0,
@@ -666,8 +648,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
               color: AppColors.primaryAccent,
             ),
           ),
-
-        // ── 현재 위치 버튼
         Positioned(
           right: 18,
           bottom: 270,
@@ -680,8 +660,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
             child: const Icon(Icons.my_location_outlined),
           ),
         ),
-
-        // ── TMO 선택 카드
         if (_selectedTmo != null)
           Positioned(
             left: 22,
@@ -704,8 +682,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
               },
             ),
           ),
-
-        // ── TMO 목록 패널
         if (_isTmoMode)
           _TmoListPanel(
             controller: _sheetController,
@@ -729,10 +705,6 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Search field
-// ---------------------------------------------------------------------------
 
 class _MapSearchField extends StatefulWidget {
   final TextEditingController controller;
@@ -762,7 +734,9 @@ class _MapSearchFieldState extends State<_MapSearchField> {
 
   void _onTextChanged() {
     final has = widget.controller.text.isNotEmpty;
-    if (has != _hasText) setState(() => _hasText = has);
+    if (has != _hasText) {
+      setState(() => _hasText = has);
+    }
   }
 
   @override
@@ -783,11 +757,7 @@ class _MapSearchFieldState extends State<_MapSearchField> {
         children: [
           const Padding(
             padding: EdgeInsets.only(left: 18, right: 10),
-            child: Icon(
-              Icons.search,
-              color: AppColors.primaryAccent,
-              size: 30,
-            ),
+            child: Icon(Icons.search, color: AppColors.primaryAccent, size: 30),
           ),
           Expanded(
             child: TextField(
@@ -818,11 +788,7 @@ class _MapSearchFieldState extends State<_MapSearchField> {
               onTap: widget.onClear,
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Icon(
-                  Icons.cancel,
-                  color: AppColors.textSub,
-                  size: 22,
-                ),
+                child: Icon(Icons.cancel, color: AppColors.textSub, size: 22),
               ),
             ),
             GestureDetector(
@@ -854,13 +820,9 @@ class _MapSearchFieldState extends State<_MapSearchField> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Category chip bar
-// ---------------------------------------------------------------------------
-
 class _CategoryChipBar extends StatelessWidget {
   final List<String> categories;
-  final String? selectedCategory; // null = 미선택
+  final String? selectedCategory;
   final ValueChanged<String> onSelected;
 
   const _CategoryChipBar({
@@ -872,7 +834,10 @@ class _CategoryChipBar extends StatelessWidget {
   _CategoryChipData _dataFor(String category) {
     switch (category) {
       case '음식':
-        return const _CategoryChipData(icon: Icons.restaurant_menu, label: '음식');
+        return const _CategoryChipData(
+          icon: Icons.restaurant_menu,
+          label: '음식',
+        );
       case '숙박':
         return const _CategoryChipData(icon: Icons.hotel_outlined, label: '숙박');
       case 'PC방':
@@ -886,7 +851,10 @@ class _CategoryChipBar extends StatelessWidget {
           label: '서비스',
         );
       case 'TMO':
-        return const _CategoryChipData(icon: Icons.train_outlined, label: 'TMO');
+        return const _CategoryChipData(
+          icon: Icons.train_outlined,
+          label: 'TMO',
+        );
       default:
         return _CategoryChipData(label: category);
     }
@@ -925,8 +893,9 @@ class _CategoryChipBar extends StatelessWidget {
                       Icon(
                         data.icon,
                         size: 19,
-                        color:
-                            selected ? Colors.white : AppColors.primaryAccent,
+                        color: selected
+                            ? Colors.white
+                            : AppColors.primaryAccent,
                       ),
                       const SizedBox(width: 6),
                     ],
@@ -935,8 +904,9 @@ class _CategoryChipBar extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color:
-                            selected ? Colors.white : AppColors.primaryAccent,
+                        color: selected
+                            ? Colors.white
+                            : AppColors.primaryAccent,
                       ),
                     ),
                   ],
@@ -956,10 +926,6 @@ class _CategoryChipData {
 
   const _CategoryChipData({this.icon, required this.label});
 }
-
-// ---------------------------------------------------------------------------
-// Store list panel (infinite scroll)
-// ---------------------------------------------------------------------------
 
 class _StoreListPanel extends StatefulWidget {
   final List<Store> stores;
@@ -1055,7 +1021,6 @@ class _StoreListPanelState extends State<_StoreListPanel> {
             controller: scrollController,
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
             children: [
-              // 핸들
               Center(
                 child: Container(
                   width: 54,
@@ -1067,8 +1032,6 @@ class _StoreListPanelState extends State<_StoreListPanel> {
                 ),
               ),
               const SizedBox(height: 18),
-
-              // 제목 + 정렬
               Row(
                 children: [
                   Expanded(
@@ -1094,8 +1057,6 @@ class _StoreListPanelState extends State<_StoreListPanel> {
                 ],
               ),
               const SizedBox(height: 10),
-
-              // 반경 드롭다운 (키워드 검색 중엔 숨김)
               if (widget.activeKeyword.isEmpty)
                 Row(
                   children: [
@@ -1150,8 +1111,6 @@ class _StoreListPanelState extends State<_StoreListPanel> {
                   ],
                 ),
               const SizedBox(height: 14),
-
-              // 목록
               if (widget.loading)
                 const Padding(
                   padding: EdgeInsets.only(top: 40),
@@ -1307,14 +1266,10 @@ class _StoreListItem extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Store bottom sheet (pin tap)
-// ---------------------------------------------------------------------------
-
 class _StoreBottomSheet extends StatefulWidget {
   final Store store;
   final VoidCallback onClose;
-  final VoidCallback onDetailTap;
+  final Future<void> Function() onDetailTap;
 
   const _StoreBottomSheet({
     required this.store,
@@ -1327,9 +1282,31 @@ class _StoreBottomSheet extends StatefulWidget {
 }
 
 class _StoreBottomSheetState extends State<_StoreBottomSheet> {
+  static const double _minSize = 0.24;
+  static const double _initialSize = 0.38;
+  static const double _maxSize = 0.86;
+  static const double _openThreshold = 0.82;
+  static const double _resetThreshold = 0.72;
+
+  final DraggableScrollableController _dragController =
+      DraggableScrollableController();
+
   bool _openedDetail = false;
+  bool _canTriggerFromDrag = true;
 
   Store get store => widget.store;
+
+  @override
+  void didUpdateWidget(covariant _StoreBottomSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.store.id != widget.store.id) {
+      _openedDetail = false;
+      _canTriggerFromDrag = true;
+      if (_dragController.isAttached) {
+        _dragController.jumpTo(_initialSize);
+      }
+    }
+  }
 
   bool get _hasBusinessHours {
     return store.openTime != null && store.closeTime != null;
@@ -1384,34 +1361,73 @@ class _StoreBottomSheetState extends State<_StoreBottomSheet> {
     return (hour: hour, minute: minute);
   }
 
-  void _openDetailFromDrag() {
-    if (_openedDetail) return;
+  Future<void> _resetSheet() async {
+    if (!_dragController.isAttached) return;
+
+    try {
+      await _dragController.animateTo(
+        _initialSize,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    } catch (_) {
+      if (_dragController.isAttached) {
+        _dragController.jumpTo(_initialSize);
+      }
+    }
+  }
+
+  Future<void> _openDetailFromDrag() async {
+    if (_openedDetail || !_canTriggerFromDrag) return;
 
     _openedDetail = true;
+    _canTriggerFromDrag = false;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        widget.onDetailTap();
-      }
-    });
+    await _resetSheet();
+
+    try {
+      await widget.onDetailTap();
+    } finally {
+      if (!mounted) return;
+
+      setState(() {
+        _openedDetail = false;
+        _canTriggerFromDrag = true;
+      });
+
+      await _resetSheet();
+    }
+  }
+
+  @override
+  void dispose() {
+    _dragController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return NotificationListener<DraggableScrollableNotification>(
       onNotification: (notification) {
-        if (notification.extent >= 0.82) {
+        final extent = notification.extent;
+
+        if (extent < _resetThreshold) {
+          _canTriggerFromDrag = true;
+        }
+
+        if (extent >= _openThreshold && _canTriggerFromDrag && !_openedDetail) {
           _openDetailFromDrag();
         }
 
         return false;
       },
       child: DraggableScrollableSheet(
-        minChildSize: 0.24,
-        initialChildSize: 0.38,
-        maxChildSize: 0.86,
+        controller: _dragController,
+        minChildSize: _minSize,
+        initialChildSize: _initialSize,
+        maxChildSize: _maxSize,
         snap: true,
-        snapSizes: const [0.24, 0.38, 0.86],
+        snapSizes: const [_minSize, _initialSize, _maxSize],
         builder: (context, scrollController) {
           return Container(
             decoration: const BoxDecoration(
@@ -1515,7 +1531,12 @@ class _StoreBottomSheetState extends State<_StoreBottomSheet> {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed: widget.onDetailTap,
+                      onPressed: () async {
+                        await widget.onDetailTap();
+                        if (mounted) {
+                          await _resetSheet();
+                        }
+                      },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
                         side: const BorderSide(color: AppColors.primary),
@@ -1573,10 +1594,6 @@ class _BusinessStatusBadge extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// TMO info card & list panel (unchanged)
-// ---------------------------------------------------------------------------
 
 class _TmoInfoCard extends StatelessWidget {
   final Tmo tmo;
@@ -1923,10 +1940,6 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Permission dialog helpers
-// ---------------------------------------------------------------------------
 
 class _PermissionIllustration extends StatelessWidget {
   final IconData icon;

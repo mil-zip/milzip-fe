@@ -25,7 +25,7 @@ class _ReviewTabContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: AppColors.bg,
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -41,12 +41,15 @@ class _ReviewTabContent extends StatelessWidget {
           if (serverReviews.isEmpty && submittedReviews.isEmpty)
             const _EmptyReviewMessage()
           else ...[
-            ...serverReviews.map((review) => _ServerReviewCard(
+            ...serverReviews.map(
+              (review) => _ServerReviewCard(
                 review: review,
-                isOwner: currentUserId != null && review.userId == currentUserId,
+                isOwner:
+                    currentUserId != null && review.userId == currentUserId,
                 onUpdated: onReviewUpdated,
                 onDeleted: onReviewDeleted,
-              )),
+              ),
+            ),
             ...submittedReviews.map(_SubmittedReviewCard.new),
           ],
         ],
@@ -65,7 +68,7 @@ class _ReviewSummary extends StatelessWidget {
 
   final double rating;
   final int reviewCount;
-  final Map<String, int> apiCounts; // API 제공 goodPointCounts (영문 enum key)
+  final Map<String, int> apiCounts;
   final List<SubmittedStoreReview> submittedReviews;
 
   const _ReviewSummary({
@@ -75,7 +78,6 @@ class _ReviewSummary extends StatelessWidget {
     required this.submittedReviews,
   });
 
-  /// API counts + 로컬 미전송 리뷰 합산
   Map<String, int> get _counts {
     final counts = Map<String, int>.from(apiCounts);
     for (final review in submittedReviews) {
@@ -90,14 +92,43 @@ class _ReviewSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final counts = _counts;
 
-    // API에서 제공하는 6가지만 표시
     final baseItems = [
-      _ReviewSummaryItem(enumKey: 'TASTY',           emoji: '🍗', label: '음식이 맛있어요',    order: 0),
-      _ReviewSummaryItem(enumKey: 'LARGE_PORTION',   emoji: '🍚', label: '양이 많아요',        order: 1),
-      _ReviewSummaryItem(enumKey: 'GOOD_VALUE',      emoji: '💰', label: '가성비가 좋아요',    order: 2),
-      _ReviewSummaryItem(enumKey: 'GOOD_FOR_SOLO',   emoji: '🍽️', label: '혼밥하기 좋아요',   order: 3),
-      _ReviewSummaryItem(enumKey: 'GOOD_FOR_GROUPS', emoji: '👥', label: '단체로 오기 좋아요', order: 4),
-      _ReviewSummaryItem(enumKey: 'QUIET',           emoji: '🤫', label: '조용하고 좋아요',   order: 5),
+      _ReviewSummaryItem(
+        enumKey: 'TASTY',
+        emoji: '🍗',
+        label: '음식이 맛있어요',
+        order: 0,
+      ),
+      _ReviewSummaryItem(
+        enumKey: 'LARGE_PORTION',
+        emoji: '🍚',
+        label: '양이 많아요',
+        order: 1,
+      ),
+      _ReviewSummaryItem(
+        enumKey: 'GOOD_VALUE',
+        emoji: '💰',
+        label: '가성비가 좋아요',
+        order: 2,
+      ),
+      _ReviewSummaryItem(
+        enumKey: 'GOOD_FOR_SOLO',
+        emoji: '🍽️',
+        label: '혼밥하기 좋아요',
+        order: 3,
+      ),
+      _ReviewSummaryItem(
+        enumKey: 'GOOD_FOR_GROUPS',
+        emoji: '👥',
+        label: '단체로 오기 좋아요',
+        order: 4,
+      ),
+      _ReviewSummaryItem(
+        enumKey: 'QUIET',
+        emoji: '🤫',
+        label: '조용하고 좋아요',
+        order: 5,
+      ),
     ];
 
     final sortedItems = [...baseItems]
@@ -121,12 +152,14 @@ class _ReviewSummary extends StatelessWidget {
           '⭐ ${rating.toStringAsFixed(1)} · $reviewCount명의 군인들이 참여했어요',
           style: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             color: AppColors.textMain,
           ),
         ),
         const SizedBox(height: 18),
-        ...sortedItems.where((item) => (counts[item.enumKey] ?? 0) > 0).map((item) {
+        ...sortedItems.where((item) => (counts[item.enumKey] ?? 0) > 0).map((
+          item,
+        ) {
           final count = counts[item.enumKey]!;
           final ranked = rankedKeys.contains(item.enumKey);
 
@@ -150,7 +183,7 @@ class _ReviewSummary extends StatelessWidget {
                     item.label,
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: ranked ? FontWeight.w900 : FontWeight.w800,
+                      fontWeight: ranked ? FontWeight.w700 : FontWeight.w600,
                       color: ranked ? _rankedTextColor : _normalTextColor,
                     ),
                   ),
@@ -159,7 +192,7 @@ class _ReviewSummary extends StatelessWidget {
                   '$count',
                   style: TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     color: ranked ? _rankedTextColor : _normalCountColor,
                   ),
                 ),
@@ -203,7 +236,7 @@ class _EmptyReviewMessage extends StatelessWidget {
         '아직 등록된 리뷰가 없습니다.',
         style: TextStyle(
           fontSize: 15,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
           color: AppColors.textSub,
         ),
       ),
@@ -239,7 +272,7 @@ class _ServerReviewCard extends StatelessWidget {
         .toList();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 28),
+      margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -258,7 +291,7 @@ class _ServerReviewCard extends StatelessWidget {
                   review.nickname,
                   style: const TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.textMain,
                   ),
                 ),
@@ -267,21 +300,25 @@ class _ServerReviewCard extends StatelessWidget {
                 PopupMenuButton<String>(
                   onSelected: (value) async {
                     if (value == 'edit') {
-                      final updated =
-                          await Navigator.of(context).push<dynamic>(
+                      final updated = await Navigator.of(context).push<dynamic>(
                         MaterialPageRoute(
                           builder: (_) =>
                               ReviewDetailScreen(review: review, isOwner: true),
                         ),
                       );
-                      if (updated is StoreReview) onUpdated?.call(updated);
-                      if (updated == 'deleted') onDeleted?.call(review.id);
+                      if (updated is StoreReview) {
+                        onUpdated?.call(updated);
+                      }
+                      if (updated == 'deleted') {
+                        onDeleted?.call(review.id);
+                      }
                     } else if (value == 'delete') {
                       final confirmed = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18)),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
                           content: const Text(
                             '리뷰를 삭제하시겠습니까?\n삭제한 리뷰는 복구할 수 없습니다.',
                             style: TextStyle(height: 1.6),
@@ -289,17 +326,23 @@ class _ServerReviewCard extends StatelessWidget {
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('취소',
-                                  style: TextStyle(
-                                      color: AppColors.textSub,
-                                      fontWeight: FontWeight.w800)),
+                              child: const Text(
+                                '취소',
+                                style: TextStyle(
+                                  color: AppColors.textSub,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('삭제',
-                                  style: TextStyle(
-                                      color: Colors.red,
-                                      fontWeight: FontWeight.w900)),
+                              child: const Text(
+                                '삭제',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -318,12 +361,15 @@ class _ServerReviewCard extends StatelessWidget {
                   itemBuilder: (_) => const [
                     PopupMenuItem(value: 'edit', child: Text('수정')),
                     PopupMenuItem(
-                        value: 'delete',
-                        child: Text('삭제',
-                            style: TextStyle(color: Colors.red))),
+                      value: 'delete',
+                      child: Text('삭제', style: TextStyle(color: Colors.red)),
+                    ),
                   ],
-                  icon: const Icon(Icons.more_vert,
-                      color: AppColors.textSub, size: 20),
+                  icon: const Icon(
+                    Icons.more_vert,
+                    color: AppColors.textSub,
+                    size: 20,
+                  ),
                 ),
             ],
           ),
@@ -334,7 +380,7 @@ class _ServerReviewCard extends StatelessWidget {
             '${metaItems.isNotEmpty ? ' · $metaItems' : ''}',
             style: const TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               color: Color(0xFFFF3B30),
             ),
           ),
@@ -344,7 +390,7 @@ class _ServerReviewCard extends StatelessWidget {
               review.benefitStatusLabel,
               style: const TextStyle(
                 fontSize: 15,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.primaryAccent,
               ),
             ),
@@ -366,7 +412,7 @@ class _ServerReviewCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 15,
                 height: 1.55,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w500,
                 color: AppColors.textMain,
               ),
             ),
@@ -392,7 +438,7 @@ class _SubmittedReviewCard extends StatelessWidget {
     final reviewImages = review.imagePaths.map(_StoreImageItem.file).toList();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 28),
+      margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -406,7 +452,7 @@ class _SubmittedReviewCard extends StatelessWidget {
             review.nickname,
             style: const TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: AppColors.textMain,
             ),
           ),
@@ -418,7 +464,7 @@ class _SubmittedReviewCard extends StatelessWidget {
             '${draft.companionAnswer}',
             style: const TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               color: Color(0xFFFF3B30),
             ),
           ),
@@ -428,7 +474,7 @@ class _SubmittedReviewCard extends StatelessWidget {
               draft.benefitSentence,
               style: const TextStyle(
                 fontSize: 15,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
                 color: AppColors.primaryAccent,
               ),
             ),
@@ -448,7 +494,7 @@ class _SubmittedReviewCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 15,
                 height: 1.55,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w500,
                 color: AppColors.textMain,
               ),
             ),
@@ -511,7 +557,7 @@ class _ReviewTag extends StatelessWidget {
         label,
         style: const TextStyle(
           fontSize: 13,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
           color: AppColors.badgeText,
         ),
       ),

@@ -56,6 +56,11 @@ class _SignupNicknameScreenState extends State<SignupNicknameScreen> {
       if (image != null) {
         final bytes = await image.readAsBytes();
         setState(() => _profileImageBytes = bytes);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('프로필 사진이 선택되었습니다.')),
+          );
+        }
       }
     } catch (_) {}
   }

@@ -8,7 +8,7 @@ class _HomeTabContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         children: [
           _InfoLine(icon: Icons.push_pin, text: store.address),
@@ -37,7 +37,7 @@ class _BenefitTabContent extends StatelessWidget {
     final benefits = store.benefits;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -45,7 +45,7 @@ class _BenefitTabContent extends StatelessWidget {
             '군 장병 혜택',
             style: TextStyle(
               fontSize: 20,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: AppColors.textMain,
             ),
           ),
@@ -55,7 +55,7 @@ class _BenefitTabContent extends StatelessWidget {
               '등록된 혜택 정보가 없습니다.',
               style: TextStyle(
                 fontSize: 15,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w500,
                 color: AppColors.textSub,
               ),
             )
@@ -77,7 +77,7 @@ class _BenefitTabContent extends StatelessWidget {
                       benefit.description,
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.primaryAccent,
                       ),
                     ),
@@ -88,7 +88,7 @@ class _BenefitTabContent extends StatelessWidget {
                         benefit.conditionText!,
                         style: const TextStyle(
                           fontSize: 13,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w500,
                           color: AppColors.textSub,
                         ),
                       ),
@@ -113,12 +113,12 @@ class _PhotoTabContent extends StatelessWidget {
   Widget build(BuildContext context) {
     if (images.isEmpty) {
       return const Padding(
-        padding: EdgeInsets.all(24),
+        padding: EdgeInsets.fromLTRB(24, 24, 24, 24),
         child: Text(
           '등록된 사진이 없습니다.',
           style: TextStyle(
             fontSize: 15,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
             color: AppColors.textSub,
           ),
         ),
@@ -128,7 +128,7 @@ class _PhotoTabContent extends StatelessWidget {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       itemCount: images.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -170,7 +170,7 @@ class _InfoLine extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 16,
                 height: 1.5,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
                 color: AppColors.textSub,
               ),
             ),

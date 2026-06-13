@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 
@@ -212,6 +213,7 @@ class AuthService {
         'profileImage',
         profileImageBytes,
         filename: 'profile.jpg',
+        contentType: MediaType('image', 'jpeg'),
       ));
     }
 

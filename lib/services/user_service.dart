@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:milzip/models/store_review.dart';
 import 'package:milzip/services/auth_service.dart';
 
@@ -211,6 +212,7 @@ class UserService {
       'profileImage',
       imageBytes,
       filename: 'profile.jpg',
+      contentType: MediaType('image', 'jpeg'),
     ));
 
     final streamed = await request.send().timeout(const Duration(seconds: 30));

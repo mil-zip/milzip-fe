@@ -101,11 +101,16 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
     );
   }
 
-  // 공통 입력 필드 데코레이션 (에러 여부에 따라 보더 색 변경)
-  InputDecoration _buildInputDecoration(String hint, {bool hasError = false}) {
+  InputDecoration _buildInputDecoration(
+    String hint, {
+    bool hasError = false,
+    bool hasSuccess = false,
+  }) {
     final borderColor = hasError
         ? const Color(0xFFE24B4A)
-        : AppColors.border;
+        : hasSuccess
+            ? const Color(0xFF34C759)
+            : AppColors.border;
 
     return InputDecoration(
       hintText: hint,
@@ -202,6 +207,9 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
                   _buildInputDecoration(
                     '비밀번호 입력 (8~20자리)',
                     hasError: _passwordError != null,
+                    hasSuccess: _passwordError == null &&
+                        _passwordController.text.isNotEmpty &&
+                        _isPasswordValid(_passwordController.text),
                   ).copyWith(
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -239,6 +247,9 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
                   _buildInputDecoration(
                     '비밀번호 재입력',
                     hasError: _passwordConfirmError != null,
+                    hasSuccess: _passwordConfirmError == null &&
+                        _passwordConfirmController.text.isNotEmpty &&
+                        _passwordController.text == _passwordConfirmController.text,
                   ).copyWith(
                     suffixIcon: IconButton(
                       icon: Icon(

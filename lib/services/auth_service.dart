@@ -253,6 +253,11 @@ class AuthService {
     );
 
     final uri = Uri.parse(result);
+
+    if (uri.queryParameters.containsKey('error')) {
+      throw Exception('카카오 로그인에 실패했습니다.');
+    }
+
     final accessToken = uri.queryParameters['accessToken'];
     final refreshToken = uri.queryParameters['refreshToken'];
 
@@ -265,6 +270,21 @@ class AuthService {
     if (refreshToken != null && refreshToken.isNotEmpty) {
       await prefs.setString(_refreshTokenKey, refreshToken);
     }
+
+  }
+
+  /// PATCH /users/me/name — 카카오 최초 가입 유저 본명 등록
+  static Future<void> updateName(String name) async {
+    final token = await getAccessToken();
+    final response = await http
+        .patch(
+          Uri.parse('$_baseUrl/users/me/name?name=${Uri.encodeComponent(name)}'),
+          headers: {
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+        )
+        .timeout(const Duration(seconds: 12));
+    _checkStatus(response, '이름 저장 실패');
   }
 
   /// POST /auth/login — 로그인 후 토큰 저장

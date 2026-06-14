@@ -21,6 +21,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
 
   bool _isButtonEnabled = false;
   bool _isLoading = false;
+  bool _isPasswordVisible = false;
 
   @override
   void initState() {
@@ -143,8 +144,19 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
             // 비밀번호 입력
             TextField(
               controller: _passwordController,
-              obscureText: true,
-              decoration: _buildInputDecoration('비밀번호'),
+              obscureText: !_isPasswordVisible,
+              decoration: _buildInputDecoration('비밀번호').copyWith(
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _isPasswordVisible
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    color: const Color(0xFFADB5BD),
+                    size: 20,
+                  ),
+                  onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                ),
+              ),
             ),
 
             const SizedBox(height: 10),

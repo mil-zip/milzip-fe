@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:milzip/screens/auth/email_login_screen.dart';
+import 'package:milzip/screens/auth/kakao_name_screen.dart';
 import 'package:milzip/screens/auth/signup_email.dart';
 import 'package:milzip/screens/home.dart';
 import 'package:milzip/services/auth_service.dart';
@@ -21,13 +22,28 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isKakaoLoading = true);
     try {
       await AuthService.kakaoLogin();
-      await UserService.getMyInfo();
+      final userInfo = await UserService.getMyInfo();
       if (!mounted) return;
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-        (route) => false,
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('카카오 로그인에 성공했습니다.'),
+          duration: Duration(seconds: 2),
+        ),
       );
+      final name = userInfo['name'] as String?;
+      if (name == null || name.trim().isEmpty) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const KakaoNameScreen()),
+          (route) => false,
+        );
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

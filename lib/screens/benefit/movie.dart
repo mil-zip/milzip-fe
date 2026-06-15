@@ -35,14 +35,20 @@ class _MovieSectionState extends State<MovieSection> {
       final results = await Future.wait([
         MovieApi.getBoxOffice(),
         MovieApi.getCinemas(),
-        UserService.getBenefitFavorites().catchError((_) => <Map<String, dynamic>>[]),
+        UserService.getBenefitFavorites().catchError(
+          (_) => <Map<String, dynamic>>[],
+        ),
       ]);
       final savedIds = (results[2] as List<dynamic>)
-          .map((e) => ((e as Map<String, dynamic>)['benefitId'] as num?)?.toInt())
+          .map(
+            (e) => ((e as Map<String, dynamic>)['benefitId'] as num?)?.toInt(),
+          )
           .whereType<int>()
           .toSet();
       // ignore: avoid_print
-      print('[benefit-movie] load success movies=${(results[0] as List).length} theaters=${(results[1] as List).length}');
+      print(
+        '[benefit-movie] load success movies=${(results[0] as List).length} theaters=${(results[1] as List).length}',
+      );
       if (!mounted) return;
       setState(() {
         _movies = (results[0] as List)
@@ -107,64 +113,70 @@ class _MovieSectionState extends State<MovieSection> {
                 ),
               ),
               const SizedBox(height: 16),
-              ...cinemas.map((c) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: GestureDetector(
-                      onTap: () async {
-                        Navigator.pop(context);
-                        final uri = Uri.parse(c['url']!);
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri,
-                              mode: LaunchMode.externalApplication);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFEEEEEE)),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.asset(
-                                  c['logo']!,
-                                  width: 36,
-                                  height: 36,
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
+              ...cinemas.map(
+                (c) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: GestureDetector(
+                    onTap: () async {
+                      Navigator.pop(context);
+                      final uri = Uri.parse(c['url']!);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFEEEEEE)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            const SizedBox(width: 14),
-                            Text(
-                              '${c['name']}에서 예매',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1A1A1A),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.asset(
+                                c['logo']!,
+                                width: 36,
+                                height: 36,
+                                fit: BoxFit.contain,
                               ),
                             ),
-                            const Spacer(),
-                            const Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              size: 14,
-                              color: Color(0xFFAAAAAA),
+                          ),
+                          const SizedBox(width: 14),
+                          Text(
+                            '${c['name']}에서 예매',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1A1A1A),
                             ),
-                          ],
-                        ),
+                          ),
+                          const Spacer(),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            color: Color(0xFFAAAAAA),
+                          ),
+                        ],
                       ),
                     ),
-                  )),
+                  ),
+                ),
+              ),
             ],
           ),
         );
@@ -177,7 +189,9 @@ class _MovieSectionState extends State<MovieSection> {
     if (_isLoading) {
       return const SizedBox(
         height: 300,
-        child: Center(child: CircularProgressIndicator(color: AppColors.primaryAccent)),
+        child: Center(
+          child: CircularProgressIndicator(color: AppColors.primaryAccent),
+        ),
       );
     }
 
@@ -198,7 +212,6 @@ class _MovieSectionState extends State<MovieSection> {
             ),
           ),
         ),
-
         if (topMovie != null)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -207,12 +220,10 @@ class _MovieSectionState extends State<MovieSection> {
               child: _ChartHeroCard(movie: topMovie),
             ),
           ),
-
         const SizedBox(height: 28),
-
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: const Text(
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: Text(
             '상영 중인 다른 영화',
             style: TextStyle(
               fontSize: 16,
@@ -221,11 +232,9 @@ class _MovieSectionState extends State<MovieSection> {
             ),
           ),
         ),
-
         const SizedBox(height: 12),
-
         SizedBox(
-          height: 210,
+          height: 228,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -234,17 +243,14 @@ class _MovieSectionState extends State<MovieSection> {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: GestureDetector(
-                  onTap: () =>
-                      _showBookingSheet(context, otherMovies[index]),
+                  onTap: () => _showBookingSheet(context, otherMovies[index]),
                   child: _OtherMovieCard(movie: otherMovies[index]),
                 ),
               );
             },
           ),
         ),
-
         const SizedBox(height: 28),
-
         const Padding(
           padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
           child: Text(
@@ -256,7 +262,6 @@ class _MovieSectionState extends State<MovieSection> {
             ),
           ),
         ),
-
         ..._theaters.map(
           (theater) => _TheaterRow(
             theater: theater,
@@ -296,7 +301,6 @@ class _MovieSectionState extends State<MovieSection> {
             },
           ),
         ),
-
         const SizedBox(height: 24),
       ],
     );
@@ -363,7 +367,6 @@ class _ChartHeroCard extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           _buildPoster(movie),
-          // 하단 그라디언트 (얇게)
           Positioned(
             bottom: 0,
             left: 0,
@@ -379,7 +382,6 @@ class _ChartHeroCard extends StatelessWidget {
               ),
             ),
           ),
-          // 순위 배지
           Positioned(
             top: 14,
             left: 14,
@@ -399,7 +401,6 @@ class _ChartHeroCard extends StatelessWidget {
               ),
             ),
           ),
-          // 하단 정보
           Positioned(
             bottom: 12,
             left: 14,
@@ -443,7 +444,7 @@ class _OtherMovieCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 115,
-      height: 210,
+      height: 228,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -485,11 +486,11 @@ class _OtherMovieCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           SizedBox(
-            height: 32,
+            height: 48,
             child: Text(
               movie.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              maxLines: 3,
+              softWrap: true,
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,

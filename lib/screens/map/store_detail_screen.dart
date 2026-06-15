@@ -587,7 +587,7 @@ class _PhotoCarousel extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 190,
+      height: 150,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -599,8 +599,8 @@ class _PhotoCarousel extends StatelessWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(14),
               child: SizedBox(
-                width: 260,
-                height: 190,
+                width: 210,
+                height: 150,
                 child: images[index].buildImage(BoxFit.cover),
               ),
             ),

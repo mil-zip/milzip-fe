@@ -560,7 +560,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
             _onMarkerTap(markerId);
           },
         ),
-        if (_isStoreMode)
+        if (_isStoreMode && _selectedStore == null)
           _StoreListPanel(
             stores: _stores,
             selectedStore: _selectedStore,

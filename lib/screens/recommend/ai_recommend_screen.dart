@@ -32,7 +32,6 @@ class _AiRecommendScreenState extends State<AiRecommendScreen> {
   final TextEditingController _locationController = TextEditingController();
   static const Color primaryColor = Color(0xFF6B9358);
 
-  bool get _hasLocation => LocationService.instance.position != null;
 
   @override
   void dispose() {
@@ -42,7 +41,7 @@ class _AiRecommendScreenState extends State<AiRecommendScreen> {
   }
 
   void _goBack() {
-    if (_currentStep == 4 && _hasLocation) {
+    if (_currentStep == 4) {
       setState(() => _currentStep = 2);
     } else if (_currentStep > 0) {
       setState(() => _currentStep--);
@@ -80,11 +79,7 @@ class _AiRecommendScreenState extends State<AiRecommendScreen> {
       );
       return;
     }
-    if (_hasLocation) {
-      setState(() => _currentStep = 4);
-    } else {
-      setState(() => _currentStep = 3);
-    }
+    setState(() => _currentStep = 4);
   }
 
   Future<void> _proceedToFreeText() async {

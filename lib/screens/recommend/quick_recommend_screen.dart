@@ -27,6 +27,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen> {
   bool _isLoading = false;
   bool _isLoadingMore = false;
   String? _error;
+  int _requestGeneration = 0; // 요청마다 증가 — 이전 응답 무시용
 
   // API에 넘길 카테고리 값 (QuickCategoryBar의 index와 1:1 대응)
   static const _categoryValues = [
@@ -37,13 +38,20 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    LocationService.instance.locationNotifier.addListener(_onLocationChanged);
     _loadData(reset: true);
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    LocationService.instance.locationNotifier.removeListener(_onLocationChanged);
     super.dispose();
+  }
+
+  void _onLocationChanged() {
+    _scrollController.jumpTo(0);
+    _loadData(reset: true);
   }
 
   void _onScroll() {
@@ -60,7 +68,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen> {
   }
 
   Future<void> _loadData({bool reset = false}) async {
-    if (_isLoading) return;
+    final generation = ++_requestGeneration;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -72,14 +80,14 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen> {
     try {
       final pos = LocationService.instance.position;
       final result = await QuickRecommendApi.fetch(
-        lat: pos?.latitude,
-        lng: pos?.longitude,
+        lat: pos.latitude,
+        lng: pos.longitude,
         category: _categoryValues[_selectedCategory],
         sortBy: _sortBy,
         page: 0,
         size: 20,
       );
-      if (!mounted) return;
+      if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _stores = result.content;
         _page = 0;
@@ -87,7 +95,7 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _error = _parseError(e);
         _isLoading = false;
@@ -101,8 +109,8 @@ class _QuickRecommendScreenState extends State<QuickRecommendScreen> {
     try {
       final pos = LocationService.instance.position;
       final result = await QuickRecommendApi.fetch(
-        lat: pos?.latitude,
-        lng: pos?.longitude,
+        lat: pos.latitude,
+        lng: pos.longitude,
         category: _categoryValues[_selectedCategory],
         sortBy: _sortBy,
         page: _page + 1,

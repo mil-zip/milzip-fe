@@ -4,6 +4,7 @@ import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 
 import '../../models/store.dart';
 import '../../models/tmo.dart';
+import '../../services/location_service.dart';
 import '../../services/store_api.dart';
 import '../../services/tmo_api.dart';
 import '../../theme/app_colors.dart';
@@ -81,6 +82,9 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
   void initState() {
     super.initState();
 
+    // 헤더에서 선택된 위치로 초기화 (기본: 포천시 신북읍)
+    _currentLatLng = LatLng(LocationService.instance.lat, LocationService.instance.lng);
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (_selectedCategory == 'TMO') {
         _loadTmoList();
@@ -89,13 +93,28 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
       }
       _showLocationPermissionDialogIfNeeded();
     });
+    LocationService.instance.locationNotifier.addListener(_onHeaderLocationChanged);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _sheetController.dispose();
+    LocationService.instance.locationNotifier.removeListener(_onHeaderLocationChanged);
     super.dispose();
+  }
+
+  void _onHeaderLocationChanged() {
+    final svc = LocationService.instance;
+    final latLng = LatLng(svc.lat, svc.lng);
+    _currentLatLng = latLng;
+    _mapController?.setCenter(latLng);
+    _mapController?.setLevel(7);
+    if (_isTmoMode) {
+      _loadTmoList();
+    } else {
+      _resetAndLoadStores();
+    }
   }
 
   String? _storeCategoryApiValue(String? categoryLabel) {
@@ -120,7 +139,7 @@ class _BenefitMapScreenState extends State<BenefitMapScreen> {
 
     if (permission == LocationPermission.whileInUse ||
         permission == LocationPermission.always) {
-      await _moveToCurrentLocation();
+      // 이미 권한 있음 — 헤더에서 선택된 위치를 유지하고 별도 이동 안 함
       return;
     }
 

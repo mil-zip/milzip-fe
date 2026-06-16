@@ -118,8 +118,8 @@ class _AiRecommendScreenState extends State<AiRecommendScreen> {
       freeText: _freeTextController.text.trim(),
       companion: _mapCompanion(_selectedCompany),
       categories: _selectedCategories.isEmpty ? null : _selectedCategories.toList(),
-      lat: pos?.latitude,
-      lng: pos?.longitude,
+      lat: pos.latitude,
+      lng: pos.longitude,
     );
 
     setState(() {

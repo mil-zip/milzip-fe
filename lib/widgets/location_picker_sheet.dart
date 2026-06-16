@@ -162,7 +162,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                         onSubmitted: _onSearch,
                         style: const TextStyle(fontSize: 14),
                         decoration: InputDecoration(
-                          hintText: '지역명 검색 (예: 동두천시, 의정부시)',
+                          hintText: '지역명 검색 (예: 경기도 파주시)',
                           hintStyle: const TextStyle(
                               fontSize: 14, color: AppColors.textSub),
                           prefixIcon: const Icon(

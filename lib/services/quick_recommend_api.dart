@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:milzip/models/quick_store.dart';
 import 'package:milzip/services/api_client.dart';
 
@@ -21,7 +22,11 @@ class QuickRecommendApi {
     final query = params.entries
         .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
         .join('&');
-    final data = await ApiClient.get('/recommendations/quick?$query');
-    return QuickStorePage.fromJson(data as Map<String, dynamic>);
+    final url = '/recommendations/quick?$query';
+    debugPrint('[QuickRecommendApi] 요청 URL: $url');
+    final data = await ApiClient.get(url);
+    final result = QuickStorePage.fromJson(data as Map<String, dynamic>);
+    debugPrint('[QuickRecommendApi] 응답: total=${result.totalElements}, count=${result.content.length}');
+    return result;
   }
 }

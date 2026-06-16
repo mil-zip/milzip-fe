@@ -119,7 +119,7 @@ class _QuickHeroSectionState extends State<QuickHeroSection>
           // 애니메이션 — 우측 세로 중앙
           Positioned(
             right: 20,
-            top: -5,
+            top: 0,
             bottom: 0,
             child: Align(
               alignment: Alignment.centerRight,

@@ -7,6 +7,7 @@ import 'package:milzip/services/auth_service.dart';
 import 'package:milzip/services/location_service.dart';
 import 'package:milzip/theme/app_colors.dart';
 import 'package:milzip/widgets/app_header.dart';
+import 'package:milzip/widgets/location_picker_sheet.dart';
 import 'benefit/amusement_park.dart';
 import 'map/benefit_map.dart';
 
@@ -64,13 +65,30 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _showLocationPicker() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => LocationPickerSheet(
+        onLocationSelected: (address) {
+          Navigator.pop(context);
+          setState(() => _locationLabel = address);
+        },
+      ),
+    );
+  }
+
   Widget _buildCurrentPage() => _pages[_currentIndex];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppHeader(location: _locationLabel),
+      appBar: AppHeader(
+        location: _locationLabel,
+        onLocationTap: _showLocationPicker,
+      ),
       body: _buildCurrentPage(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

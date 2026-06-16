@@ -36,6 +36,7 @@ class _MilitaryConfirmScreenState extends State<MilitaryConfirmScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
+      Navigator.popUntil(context, (route) => route.isFirst || route.settings.name == '/home');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

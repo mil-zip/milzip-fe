@@ -52,7 +52,7 @@ class _MilitaryVerificationScreenState
         addrSigungu: _sigunguController.text.trim(),
       );
       if (!mounted) return;
-      Navigator.pushReplacement(
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const MilitaryConfirmScreen()),
       );
@@ -61,6 +61,7 @@ class _MilitaryVerificationScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
+      Navigator.pop(context);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

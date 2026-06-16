@@ -108,10 +108,14 @@ class AuthService {
     required String addrSido,
     required String addrSigungu,
   }) async {
+    final token = await getAccessToken();
     final response = await http
         .post(
-          Uri.parse('$_localUrl/military/verifications'),
-          headers: {'Content-Type': 'application/json'},
+          Uri.parse('$_baseUrl/military/verifications'),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
           body: jsonEncode({
             'identity': identity,
             'phoneNo': phoneNo,
@@ -125,10 +129,14 @@ class AuthService {
 
   /// POST /military/verifications/confirm — 군인 인증 2차 확인
   static Future<void> confirmMilitaryVerification() async {
+    final token = await getAccessToken();
     final response = await http
         .post(
-          Uri.parse('$_localUrl/military/verifications/confirm'),
-          headers: {'Content-Type': 'application/json'},
+          Uri.parse('$_baseUrl/military/verifications/confirm'),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
         )
         .timeout(const Duration(seconds: 30));
     _checkStatus(response, '군인 인증 확인 실패');

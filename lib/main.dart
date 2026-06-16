@@ -7,6 +7,10 @@ const String kakaoJavaScriptKey = '475d290f611228d57558d105bc36862b';
 /// 앱 전역 네비게이터 키 — 위젯 컨텍스트 없이도 화면 이동에 사용
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+/// 앱 전역 RouteObserver — 모달/라우트 진입/이탈 감지용
+final RouteObserver<ModalRoute<void>> routeObserver =
+    RouteObserver<ModalRoute<void>>();
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -25,6 +29,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
+      navigatorObservers: [routeObserver],
       title: 'MILZIP',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

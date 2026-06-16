@@ -153,7 +153,7 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
         centerTitle: true,
       ),
 
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,6 +311,7 @@ class _SignupPasswordScreenState extends State<SignupPasswordScreen> {
                 ),
               ),
             ),
+            SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 24),
           ],
         ),
       ),

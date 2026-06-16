@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:milzip/main.dart';
+import 'package:milzip/screens/home.dart';
 import 'package:milzip/theme/app_colors.dart';
 
 class QuickHeroSection extends StatefulWidget {
@@ -10,7 +12,8 @@ class QuickHeroSection extends StatefulWidget {
 }
 
 class _QuickHeroSectionState extends State<QuickHeroSection>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin
+    implements RouteAware {
   static const _heroIcons = [
     Icons.restaurant,
     Icons.local_cafe,
@@ -40,7 +43,51 @@ class _QuickHeroSectionState extends State<QuickHeroSection>
       if (mounted) setState(() => _heroIconIndex = (_heroIconIndex + 1) % _heroIcons.length);
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _insertOverlay());
+    homeTabNotifier.addListener(_onTabChanged);
   }
+
+  void _onTabChanged() {
+    final isQuickTab = homeTabNotifier.value.tab == 0;
+    if (isQuickTab) {
+      if (_overlayEntry == null) _insertOverlay();
+    } else {
+      _overlayEntry?.remove();
+      _overlayEntry = null;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null) routeObserver.subscribe(this, route);
+  }
+
+  // 이 화면 위에 새 라우트(상세페이지·바텀시트 등)가 쌓임 → 오버레이 제거 + 정지
+  @override
+  void didPushNext() {
+    _pulseController.stop();
+    _heroTimer?.cancel();
+    _heroTimer = null;
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  // 위에 쌓였던 라우트가 pop됨 → 오버레이 재삽입 + 재개
+  @override
+  void didPopNext() {
+    _insertOverlay();
+    _pulseController.repeat(reverse: true);
+    _heroTimer ??= Timer.periodic(const Duration(milliseconds: 2000), (_) {
+      if (mounted) setState(() => _heroIconIndex = (_heroIconIndex + 1) % _heroIcons.length);
+    });
+  }
+
+  @override
+  void didPush() {}
+
+  @override
+  void didPop() {}
 
   void _insertOverlay() {
     if (!mounted) return;
@@ -60,6 +107,8 @@ class _QuickHeroSectionState extends State<QuickHeroSection>
 
   @override
   void dispose() {
+    routeObserver.unsubscribe(this);
+    homeTabNotifier.removeListener(_onTabChanged);
     _overlayEntry?.remove();
     _overlayEntry = null;
     _heroTimer?.cancel();

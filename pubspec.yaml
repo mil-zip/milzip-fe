@@ -43,6 +43,7 @@ dependencies:
   geocoding: ^4.0.0
   shared_preferences: ^2.3.3
   flutter_web_auth_2: ^4.0.1
+  web: ^1.1.1
 
 
 

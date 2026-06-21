@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:milzip/screens/splash_screen.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 
-const String kakaoJavaScriptKey = '288e72e3d538167a027ddb5dafe4252f';
+const String kakaoJavaScriptKey = '73513c208a64385e1ae1c270fb9b56e5';
 
 /// 앱 전역 네비게이터 키 — 위젯 컨텍스트 없이도 화면 이동에 사용
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();

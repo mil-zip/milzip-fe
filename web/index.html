@@ -31,6 +31,64 @@
 
   <title>milzip</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Kakao Maps JS SDK (web map) -->
+  <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=73513c208a64385e1ae1c270fb9b56e5&libraries=services,clusterer"></script>
+  <script type="text/javascript">
+    window.__milzipMaps = {};
+    function milzipMapReady() {
+      return !!(window.kakao && window.kakao.maps && window.kakao.maps.Map);
+    }
+    function milzipMapInit(id, lat, lng, level) {
+      if (!milzipMapReady()) return;
+      var container = document.getElementById(id);
+      if (!container) return;
+      var map = new kakao.maps.Map(container, {
+        center: new kakao.maps.LatLng(lat, lng),
+        level: level
+      });
+      window.__milzipMaps[id] = { map: map, markers: [] };
+      // 지도 빈 곳 클릭 → 상세 닫기
+      kakao.maps.event.addListener(map, 'click', function () {
+        if (typeof window.milzipOnMapTap === 'function') {
+          window.milzipOnMapTap();
+        }
+      });
+      // 컨테이너 크기가 늦게 잡히는 경우 보정 (회색/빈 지도 방지)
+      setTimeout(function () {
+        map.relayout();
+        map.setCenter(new kakao.maps.LatLng(lat, lng));
+      }, 300);
+    }
+    function milzipMapSetCenter(id, lat, lng) {
+      var inst = window.__milzipMaps[id];
+      if (inst) inst.map.setCenter(new kakao.maps.LatLng(lat, lng));
+    }
+    function milzipMapSetLevel(id, level) {
+      var inst = window.__milzipMaps[id];
+      if (inst) inst.map.setLevel(level);
+    }
+    function milzipMapSetMarkers(id, markersJson) {
+      var inst = window.__milzipMaps[id];
+      if (!inst) return;
+      inst.markers.forEach(function (m) { m.setMap(null); });
+      inst.markers = [];
+      var arr = [];
+      try { arr = JSON.parse(markersJson); } catch (e) { return; }
+      arr.forEach(function (d) {
+        var marker = new kakao.maps.Marker({
+          position: new kakao.maps.LatLng(d.lat, d.lng),
+          map: inst.map
+        });
+        kakao.maps.event.addListener(marker, 'click', function () {
+          if (typeof window.milzipOnMarkerTap === 'function') {
+            window.milzipOnMarkerTap(d.id);
+          }
+        });
+        inst.markers.push(marker);
+      });
+    }
+  </script>
 </head>
 <body>
   <!--

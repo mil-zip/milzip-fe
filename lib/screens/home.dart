@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:milzip/screens/login_screen.dart';
 import 'package:milzip/screens/my_page_screen.dart';
 import 'package:milzip/screens/recommend/quick_recommend_screen.dart';
@@ -25,6 +26,9 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+/// 새로고침(웹) 후 마지막으로 보던 탭 복원용 저장 키
+const String _kHomeTabKey = 'home_tab_index';
+
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   String _locationLabel = '포천시 신북읍';
@@ -41,8 +45,22 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _restoreTab();
     _initLocation();
     homeTabNotifier.addListener(_onExternalTabChange);
+  }
+
+  /// 저장된 마지막 탭 복원 (웹 새로고침 대응)
+  Future<void> _restoreTab() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getInt(_kHomeTabKey);
+    if (saved != null && saved >= 0 && saved < _pages.length && mounted) {
+      setState(() => _currentIndex = saved);
+    }
+  }
+
+  void _saveTab(int index) {
+    SharedPreferences.getInstance().then((p) => p.setInt(_kHomeTabKey, index));
   }
 
   @override
@@ -54,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onExternalTabChange() {
     final v = homeTabNotifier.value;
     setState(() => _currentIndex = v.tab);
+    _saveTab(v.tab);
   }
 
   Future<void> _initLocation() async {
@@ -106,6 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           }
           setState(() => _currentIndex = i);
+          _saveTab(i);
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: AppColors.surface,

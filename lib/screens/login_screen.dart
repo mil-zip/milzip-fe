@@ -17,6 +17,30 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _isKakaoLoading = false;
+  bool _isBrowsing = false;
+
+  /// 둘러보기 — 데모 계정으로 자동 로그인 후 홈 이동
+  Future<void> _browseAsDemo() async {
+    if (_isBrowsing) return;
+    setState(() => _isBrowsing = true);
+    try {
+      await AuthService.login('minjunshin29@gmail.com', 'Cofls79!');
+      await AuthService.fetchAndSaveMyInfo();
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isBrowsing = false);
+    }
+  }
 
   Future<void> _handleKakaoLogin() async {
     setState(() => _isKakaoLoading = true);
@@ -149,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(width: 8),
                             const Text(
-                              '카카오로 로그인',
+                              '카카오톡으로 로그인',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -197,15 +221,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 12),
 
-              // ── 둘러보기 (gradient + border + shadow — 더 강조) ───────────
+              // ── 둘러보기 (데모 계정 자동 로그인) ───────────
               GestureDetector(
-                onTap: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HomeScreen()),
-                    (route) => false,
-                  );
-                },
+                onTap: _browseAsDemo,
                 child: Container(
                   width: double.infinity,
                   height: 54,
@@ -228,16 +246,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Text(
-                      '둘러보기',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
+                  child: Center(
+                    child: _isBrowsing
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            '둘러보기',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
                   ),
                 ),
               ),

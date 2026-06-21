@@ -4,8 +4,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'api_client.dart';
 
-const double _defaultLat = 37.9162;
-const double _defaultLng = 127.1948;
+const double _defaultLat = 37.8949;
+const double _defaultLng = 127.2003;
 const String _defaultAddress = '포천시 신북읍';
 
 class LocationService {

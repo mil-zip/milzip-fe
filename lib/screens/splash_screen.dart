@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:milzip/screens/auth/kakao_name_screen.dart';
 import 'package:milzip/screens/home.dart';
 import 'package:milzip/screens/login_screen.dart';
 import 'package:milzip/services/auth_service.dart';
@@ -41,6 +42,39 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateToNextScreen() async {
+    // ── 웹 카카오 로그인 콜백(/auth/callback) 우선 처리 ──
+    final callback = await AuthService.handleWebKakaoCallback();
+    if (!mounted) return;
+
+    if (callback == 'name') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const KakaoNameScreen()),
+      );
+      return;
+    }
+    if (callback == 'home') {
+      try {
+        await AuthService.fetchAndSaveMyInfo();
+      } catch (_) {
+        // 정보 조회 실패해도 토큰은 있으니 홈으로 진행
+      }
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+      return;
+    }
+    if (callback == 'error') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      return;
+    }
+
+    // ── 일반 진입 ──
     await Future.delayed(const Duration(milliseconds: 2500));
     if (!mounted) return;
 

@@ -1,13 +1,15 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+import 'http_client.dart';
+import 'web_nav.dart';
 
 class AuthService {
   static const String _baseUrl = 'https://api.milzip.site';
-  static const String _localUrl = 'http://localhost:8080';
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _emailKey = 'user_email';
@@ -253,10 +255,21 @@ class AuthService {
     await prefs.remove(_profileImageUrlKey);
   }
 
-  /// GET /auth/kakao — 카카오 OAuth 로그인 후 토큰 저장
+  /// GET /auth/kakao — 카카오 OAuth 로그인
+  ///
+  /// - 웹: 전체 페이지를 `/auth/kakao?platform=web`로 리다이렉트한다.
+  ///   (이후 `https://milzip.site/auth/callback?accessToken=...`로 돌아오며,
+  ///    돌아온 뒤 [handleWebKakaoCallback]에서 토큰을 저장한다.)
+  /// - 앱: flutter_web_auth_2로 커스텀 스킴 콜백을 받아 토큰을 저장한다.
   static Future<void> kakaoLogin() async {
+    if (kIsWeb) {
+      // 페이지가 이동하므로 이 함수는 정상 반환되지 않는다.
+      webRedirect('$_baseUrl/auth/kakao?platform=web');
+      return;
+    }
+
     final result = await FlutterWebAuth2.authenticate(
-      url: '$_baseUrl/auth/kakao',
+      url: '$_baseUrl/auth/kakao?platform=app',
       callbackUrlScheme: 'milzip',
     );
 
@@ -278,7 +291,43 @@ class AuthService {
     if (refreshToken != null && refreshToken.isNotEmpty) {
       await prefs.setString(_refreshTokenKey, refreshToken);
     }
+  }
 
+  /// 웹 카카오 로그인 콜백 처리 결과
+  /// - [success]: 토큰 저장 성공 여부
+  /// - [needsName]: 본명 입력 필요 여부 (신규 유저)
+  /// - [error]: 실패 메시지 (있으면 실패)
+
+  /// 웹에서 `/auth/callback?accessToken=...&needsName=...` 으로 돌아왔을 때 호출.
+  /// URL에서 토큰을 파싱·저장하고, 주소창을 정리한다.
+  /// refreshToken은 httpOnly 쿠키에 있으므로 파싱하지 않는다.
+  ///
+  /// 반환: 'home' | 'name' | 'error' | 'none'
+  static Future<String> handleWebKakaoCallback() async {
+    if (!kIsWeb) return 'none';
+
+    final uri = Uri.base;
+    if (!uri.path.contains('/auth/callback')) return 'none';
+
+    final params = uri.queryParameters;
+
+    // 주소창에서 토큰 등 민감 정보 제거
+    webReplacePath('/');
+
+    if (params.containsKey('error')) {
+      return 'error';
+    }
+
+    final accessToken = params['accessToken'];
+    if (accessToken == null || accessToken.isEmpty) {
+      return 'error';
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_accessTokenKey, accessToken);
+
+    final needsName = params['needsName'] == 'true';
+    return needsName ? 'name' : 'home';
   }
 
   /// PATCH /users/me/name — 카카오 최초 가입 유저 본명 등록
@@ -364,22 +413,42 @@ class AuthService {
   }
 
   /// POST /auth/tokens/refresh — 액세스 토큰 갱신
+  ///
+  /// - 웹: refreshToken은 httpOnly 쿠키에 있으므로, withCredentials 클라이언트로
+  ///   요청하면 브라우저가 쿠키를 자동 전송한다. (Cookie 헤더 수동 설정 X)
+  /// - 앱: prefs에 저장된 refreshToken을 Cookie 헤더로 보낸다.
   static Future<void> refreshTokens() async {
     final prefs = await SharedPreferences.getInstance();
-    final refreshToken = prefs.getString(_refreshTokenKey);
-    if (refreshToken == null || refreshToken.isEmpty) {
-      throw Exception('세션이 만료되었습니다.');
-    }
 
-    final response = await http
-        .post(
-          Uri.parse('$_baseUrl/auth/tokens/refresh'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Cookie': 'refreshToken=$refreshToken',
-          },
-        )
-        .timeout(const Duration(seconds: 12));
+    late final http.Response response;
+
+    if (kIsWeb) {
+      final client = createCredentialedClient();
+      try {
+        response = await client
+            .post(
+              Uri.parse('$_baseUrl/auth/tokens/refresh'),
+              headers: {'Content-Type': 'application/json'},
+            )
+            .timeout(const Duration(seconds: 12));
+      } finally {
+        client.close();
+      }
+    } else {
+      final refreshToken = prefs.getString(_refreshTokenKey);
+      if (refreshToken == null || refreshToken.isEmpty) {
+        throw Exception('세션이 만료되었습니다.');
+      }
+      response = await http
+          .post(
+            Uri.parse('$_baseUrl/auth/tokens/refresh'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Cookie': 'refreshToken=$refreshToken',
+            },
+          )
+          .timeout(const Duration(seconds: 12));
+    }
 
     if (response.statusCode == 401 || response.statusCode == 403) {
       await clearTokens();
@@ -392,11 +461,13 @@ class AuthService {
     final data = (body['data'] ?? body) as Map<String, dynamic>;
     await prefs.setString(_accessTokenKey, data['accessToken'] ?? data['access_token'] ?? '');
 
-    // 새 refreshToken 쿠키도 저장
-    final rawCookie = response.headers['set-cookie'] ?? '';
-    final cookieMatch = RegExp(r'refreshToken=([^;,\s]+)').firstMatch(rawCookie);
-    if (cookieMatch != null) {
-      await prefs.setString(_refreshTokenKey, cookieMatch.group(1)!);
+    // 앱: 새 refreshToken 쿠키 저장 (웹은 브라우저가 쿠키를 자동 갱신)
+    if (!kIsWeb) {
+      final rawCookie = response.headers['set-cookie'] ?? '';
+      final cookieMatch = RegExp(r'refreshToken=([^;,\s]+)').firstMatch(rawCookie);
+      if (cookieMatch != null) {
+        await prefs.setString(_refreshTokenKey, cookieMatch.group(1)!);
+      }
     }
   }
 

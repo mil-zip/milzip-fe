@@ -1,3 +1,9 @@
 [build]
   command = "if [ ! -d 'flutter' ]; then git clone https://github.com/flutter/flutter.git -b stable --depth 1; fi && flutter/bin/flutter build web --release"
   publish = "build/web"
+
+# SPA 라우팅: /auth/callback 등 모든 경로를 index.html로 (404 방지)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

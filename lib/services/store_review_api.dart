@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/store_review.dart';
 import '../models/store_review_draft.dart';
 import '../services/auth_service.dart';
@@ -65,7 +65,7 @@ class StoreReviewApi {
       'content': submitted.content,
     };
 
-    if (submitted.imagePaths.isEmpty) {
+    if (submitted.imageFiles.isEmpty) {
       final data = await ApiClient.post(
         '/stores/$storeId/reviews',
         body: body,
@@ -97,15 +97,14 @@ class StoreReviewApi {
       for (int i = 0; i < draft.goodPointEnums.length; i++) {
         request.fields['goodPoints[$i]'] = draft.goodPointEnums[i];
       }
-      for (final path in submitted.imagePaths) {
-        final file = File(path);
-        if (await file.exists()) {
-          request.files.add(await http.MultipartFile.fromPath(
+      for (final xfile in submitted.imageFiles) {
+        final bytes = await xfile.readAsBytes();
+        request.files.add(http.MultipartFile.fromBytes(
           'images',
-          path,
-          contentType: _imageMediaType(path),
+          bytes,
+          filename: xfile.name,
+          contentType: _imageMediaType(xfile.name),
         ));
-        }
       }
 
       final streamed = await request.send().timeout(const Duration(seconds: 60));
@@ -139,7 +138,8 @@ class StoreReviewApi {
     required int storeId,
     required int reviewId,
     required Map<String, dynamic> fields,
-    List<String>? newImagePaths,
+    List<XFile>? newImageFiles,
+    List<String>? keepImageUrls,
   }) async {
     for (int attempt = 1; attempt <= 2; attempt++) {
       final token = await AuthService.getAccessToken();
@@ -164,17 +164,30 @@ class StoreReviewApi {
         }
       });
 
-      // 이미지 (null이면 필드 자체 미전송 → 서버가 기존 이미지 유지)
-      if (newImagePaths != null) {
-        for (final path in newImagePaths) {
-          final file = File(path);
-          if (await file.exists()) {
-            request.files.add(await http.MultipartFile.fromPath(
+      // 이미지 변경 있을 때만 images 필드 전송 (null이면 서버가 기존 유지)
+      if (newImageFiles != null || keepImageUrls != null) {
+        // 기존 이미지 URL → bytes로 다운로드 후 첨부
+        for (final url in keepImageUrls ?? []) {
+          try {
+            final res = await http.get(Uri.parse(url));
+            final filename = url.split('/').last.split('?').first;
+            request.files.add(http.MultipartFile.fromBytes(
               'images',
-              path,
-              contentType: _imageMediaType(path),
+              res.bodyBytes,
+              filename: filename,
+              contentType: _imageMediaType(filename),
             ));
-          }
+          } catch (_) {}
+        }
+        // 새 이미지
+        for (final xfile in newImageFiles ?? []) {
+          final bytes = await xfile.readAsBytes();
+          request.files.add(http.MultipartFile.fromBytes(
+            'images',
+            bytes,
+            filename: xfile.name,
+            contentType: _imageMediaType(xfile.name),
+          ));
         }
       }
 
@@ -214,8 +227,9 @@ class StoreReviewApi {
   /// POST /stores/{storeId}/reviews/receipt-verify — 영수증 OCR 검증
   static Future<Map<String, dynamic>> verifyReceipt({
     required int storeId,
-    required File receiptImage,
+    required XFile receiptImage,
   }) async {
+    final bytes = await receiptImage.readAsBytes();
     // 401 시 토큰 갱신 후 1회 재시도
     for (int attempt = 1; attempt <= 2; attempt++) {
       final token = await AuthService.getAccessToken();
@@ -226,10 +240,11 @@ class StoreReviewApi {
       if (token != null) request.headers['Authorization'] = 'Bearer $token';
       request.headers['Accept'] = 'application/json';
       request.files.add(
-        await http.MultipartFile.fromPath(
+        http.MultipartFile.fromBytes(
           'receiptImage',
-          receiptImage.path,
-          contentType: _imageMediaType(receiptImage.path),
+          bytes,
+          filename: receiptImage.name,
+          contentType: _imageMediaType(receiptImage.name),
         ),
       );
 

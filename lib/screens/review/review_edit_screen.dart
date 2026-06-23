@@ -1,6 +1,4 @@
-import 'dart:io';
-import 'package:http/http.dart' as http;
-
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -107,31 +105,6 @@ class _ReviewEditScreenState extends State<ReviewEditScreen> {
       };
       final r = widget.review;
 
-      // images 처리
-      // - 변경 없음 → null (서버가 기존 이미지 유지)
-      // - 변경 있음 → 남은 기존 이미지를 URL에서 다운로드 후 새 이미지와 합쳐 전송
-      List<String>? newImagePaths;
-      final tempFiles = <File>[];
-      if (_imagesChanged) {
-        // 남은 기존 이미지 URL → temp 파일로 다운로드
-        final tmpDir = Directory.systemTemp;
-        for (int i = 0; i < _existingUrls.length; i++) {
-          try {
-            final res = await http.get(Uri.parse(_existingUrls[i]));
-            final ext = _existingUrls[i].split('.').last.split('?').first;
-            final tmp = File('${tmpDir.path}/review_existing_${DateTime.now().millisecondsSinceEpoch}_$i.$ext');
-            await tmp.writeAsBytes(res.bodyBytes);
-            tempFiles.add(tmp);
-          } catch (_) {
-            // 다운로드 실패한 기존 이미지는 건너뜀
-          }
-        }
-        newImagePaths = [
-          ...tempFiles.map((f) => f.path),
-          ..._newImages.map((x) => x.path),
-        ];
-      }
-
       final updated = await StoreReviewApi.update(
         storeId: r.storeId,
         reviewId: r.id,
@@ -147,12 +120,9 @@ class _ReviewEditScreenState extends State<ReviewEditScreen> {
               .map((label) => labelToEnum[label] ?? label)
               .toList(),
         },
-        newImagePaths: newImagePaths,
+        newImageFiles: _imagesChanged ? _newImages : null,
+        keepImageUrls: _imagesChanged ? _existingUrls : null,
       );
-      // temp 파일 정리
-      for (final f in tempFiles) {
-        try { await f.delete(); } catch (_) {}
-      }
       if (!mounted) return;
       Navigator.pop(context, updated);
     } catch (e) {
@@ -403,11 +373,16 @@ class _ReviewEditScreenState extends State<ReviewEditScreen> {
                       // 새 이미지 (local file)
                       ..._newImages.asMap().entries.map((e) {
                         return _ImageThumb(
-                          child: Image.file(
-                            File(e.value.path),
-                            fit: BoxFit.cover,
-                            width: 100,
-                            height: 100,
+                          child: FutureBuilder<Uint8List>(
+                            future: e.value.readAsBytes(),
+                            builder: (_, snap) => snap.hasData
+                                ? Image.memory(
+                                    snap.data!,
+                                    fit: BoxFit.cover,
+                                    width: 100,
+                                    height: 100,
+                                  )
+                                : const SizedBox(width: 100, height: 100),
                           ),
                           onRemove: () => _removeNewImage(e.key),
                         );

@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -49,7 +48,7 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
     final submitted = SubmittedStoreReview(
       draft: widget.draft,
       content: _contentController.text.trim(),
-      imagePaths: _images.map((image) => image.path).toList(),
+      imageFiles: _images,
       createdAt: DateTime.now(),
     );
 
@@ -85,7 +84,7 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
             ),
             child: const Text(
               '등록',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
           ),
         ),
@@ -106,37 +105,45 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
                     child: Text(
                       widget.store.name,
                       style: const TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textMain,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 34),
-                    child: Text(
-                      '★${draft.rating.toStringAsFixed(1)} · $date · 1번째 방문',
-                      style: const TextStyle(
-                        fontSize: 17,
-                        color: AppColors.textSub,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.star_rounded, size: 14, color: AppColors.secondaryDark),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${draft.rating.toStringAsFixed(1)} · $date',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSub,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 8),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 34),
-                    child: Text(
-                      '${draft.waitTimeAnswer} · ${draft.purposeAnswer} · ${draft.companionAnswer}',
-                      style: const TextStyle(
-                        fontSize: 17,
-                        color: AppColors.textSub,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        draft.visitTypeAnswer,
+                        draft.waitTimeAnswer,
+                        draft.purposeAnswer,
+                        draft.companionAnswer,
+                      ].where((s) => s.isNotEmpty).map((s) => _SubmitMetaChip(label: s)).toList(),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 34),
                     child: Row(
@@ -144,41 +151,43 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
                         Text(
                           draft.rating.toStringAsFixed(1),
                           style: const TextStyle(
-                            fontSize: 40,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFFFF3B30),
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.secondaryDark,
                           ),
                         ),
-                        const SizedBox(width: 18),
+                        const SizedBox(width: 12),
                         _StaticStarRating(rating: draft.rating),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 34),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.verified_user_outlined,
-                          color: AppColors.primaryAccent,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            draft.benefitSentence,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.primaryAccent,
+                  if (draft.benefitSentence.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 34),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.verified_user_outlined,
+                            color: AppColors.primaryAccent,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              draft.benefitSentence,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primaryAccent,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                  ],
+                  const SizedBox(height: 14),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 34),
                     child: Wrap(
@@ -187,19 +196,18 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
                       children: draft.goodPoints.map((point) {
                         return Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
+                            horizontal: 12,
+                            vertical: 6,
                           ),
                           decoration: BoxDecoration(
                             color: AppColors.badge,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppColors.border),
+                            borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
                             point,
                             style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
                               color: AppColors.badgeText,
                             ),
                           ),
@@ -225,17 +233,17 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
                         hintText:
                             '✎ 당신의 후기를 작성해주세요!\n\n리뷰 작성 시 욕설, 비방, 명예훼손성 표현은 삼가해주세요.',
                         hintStyle: TextStyle(
-                          fontSize: 17,
-                          height: 1.45,
+                          fontSize: 15,
+                          height: 1.5,
                           color: AppColors.textSub,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
                       style: const TextStyle(
-                        fontSize: 17,
-                        height: 1.45,
+                        fontSize: 15,
+                        height: 1.5,
                         color: AppColors.textMain,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -251,11 +259,16 @@ class _ReviewSubmitScreenState extends State<ReviewSubmitScreen> {
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(14),
-                                  child: Image.file(
-                                    File(entry.value.path),
-                                    width: 150,
-                                    height: 150,
-                                    fit: BoxFit.cover,
+                                  child: FutureBuilder<Uint8List>(
+                                    future: entry.value.readAsBytes(),
+                                    builder: (_, snap) => snap.hasData
+                                        ? Image.memory(
+                                            snap.data!,
+                                            width: 150,
+                                            height: 150,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : const SizedBox(width: 150, height: 150),
                                   ),
                                 ),
                                 Positioned(
@@ -332,14 +345,14 @@ class _SubmitHeader extends StatelessWidget {
             onPressed: onBack,
             icon: const Icon(
               Icons.arrow_back_ios_new,
-              size: 28,
+              size: 22,
               color: AppColors.textSub,
             ),
           ),
           const Spacer(),
           IconButton(
             onPressed: onClose,
-            icon: const Icon(Icons.close, size: 36, color: AppColors.textMain),
+            icon: const Icon(Icons.close, size: 24, color: AppColors.textMain),
           ),
         ],
       ),
@@ -359,16 +372,16 @@ class _StaticStarRating extends StatelessWidget {
         final fill = (rating - index).clamp(0.0, 1.0);
 
         return SizedBox(
-          width: 38,
-          height: 38,
+          width: 26,
+          height: 26,
           child: Stack(
             children: [
-              const Icon(Icons.star, size: 38, color: Color(0xFFF0F0F0)),
+              const Icon(Icons.star_rounded, size: 26, color: Color(0xFFE8E8E8)),
               ClipRect(
                 clipper: _StarClipper(fill),
                 child: const Icon(
-                  Icons.star,
-                  size: 38,
+                  Icons.star_rounded,
+                  size: 26,
                   color: Color(0xFFFFD600),
                 ),
               ),
@@ -376,6 +389,30 @@ class _StaticStarRating extends StatelessWidget {
           ),
         );
       }),
+    );
+  }
+}
+
+class _SubmitMetaChip extends StatelessWidget {
+  final String label;
+  const _SubmitMetaChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textSub,
+        ),
+      ),
     );
   }
 }

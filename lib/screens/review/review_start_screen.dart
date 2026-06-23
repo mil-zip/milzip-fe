@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -51,7 +49,7 @@ class _ReviewStartScreenState extends State<ReviewStartScreen> {
     try {
       await StoreReviewApi.verifyReceipt(
         storeId: widget.store.id,
-        receiptImage: File(image.path),
+        receiptImage: image,
       );
       if (!mounted) return;
       _goSurvey('영수증');
@@ -186,7 +184,7 @@ class _ReviewStartScreenState extends State<ReviewStartScreen> {
                         onPressed: () => Navigator.pop(context),
                         icon: const Icon(
                           Icons.arrow_back_ios_new,
-                          size: 28,
+                          size: 22,
                           color: AppColors.textSub,
                         ),
                       ),
@@ -195,7 +193,7 @@ class _ReviewStartScreenState extends State<ReviewStartScreen> {
                         onPressed: () => Navigator.pop(context),
                         icon: const Icon(
                           Icons.close,
-                          size: 36,
+                          size: 24,
                           color: AppColors.textMain,
                         ),
                       ),
@@ -209,8 +207,8 @@ class _ReviewStartScreenState extends State<ReviewStartScreen> {
                   child: Text(
                     '당신의 경험을 공유해주세요!',
                     style: TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.w900,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textMain,
                     ),
                   ),
@@ -320,25 +318,25 @@ class _ReceiptButtonState extends State<_ReceiptButton> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 22),
+          padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
             color: _pressed ? AppColors.pressed : AppColors.primaryAccent,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
                 'assets/images/review_receipt.png',
-                width: 32,
-                height: 32,
+                width: 22,
+                height: 22,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               const Text(
                 '영수증 인증하기',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.textWhite,
                 ),
               ),

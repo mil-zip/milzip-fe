@@ -119,7 +119,7 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
             ),
             child: const Text(
               '선택 완료',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
           ),
         ),
@@ -137,12 +137,12 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_ios_new, size: 28),
+                    icon: const Icon(Icons.arrow_back_ios_new, size: 22),
                   ),
                   const Spacer(),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, size: 36),
+                    icon: const Icon(Icons.close, size: 24),
                   ),
                 ],
               ),
@@ -237,8 +237,8 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                     const Text(
                       '얼마나 만족하셨나요?',
                       style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textMain,
                       ),
                     ),
@@ -265,8 +265,8 @@ class _ReviewSurveyScreenState extends State<ReviewSurveyScreen> {
                     const Text(
                       '어떤 점이 좋았나요?',
                       style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textMain,
                       ),
                     ),
@@ -326,8 +326,8 @@ class _QuestionBlock extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              fontSize: 23,
-              fontWeight: FontWeight.w900,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
               color: AppColors.textMain,
             ),
           ),
@@ -390,8 +390,8 @@ class _MilitaryChoiceChipState extends State<_MilitaryChoiceChip> {
         duration: const Duration(milliseconds: 90),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          constraints: const BoxConstraints(minWidth: 118),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+          constraints: const BoxConstraints(minWidth: 90),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: backgroundColor,
@@ -405,8 +405,8 @@ class _MilitaryChoiceChipState extends State<_MilitaryChoiceChip> {
             widget.label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
               color: textColor,
             ),
           ),
@@ -458,14 +458,14 @@ class _PartialStar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 56,
-      height: 56,
+      width: 44,
+      height: 44,
       child: Stack(
         children: [
-          const Icon(Icons.star, size: 56, color: Color(0xFFF0F0F0)),
+          const Icon(Icons.star_rounded, size: 44, color: Color(0xFFE8E8E8)),
           ClipRect(
             clipper: _StarClipper(fill),
-            child: const Icon(Icons.star, size: 56, color: Color(0xFFFFD600)),
+            child: const Icon(Icons.star_rounded, size: 44, color: Color(0xFFFFD600)),
           ),
         ],
       ),

@@ -145,8 +145,8 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
                         child: Text(
                           r.nickname,
                           style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
                             color: AppColors.textMain,
                           ),
                         ),
@@ -161,51 +161,53 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
                       Text(
                         r.rating.toStringAsFixed(1),
                         style: const TextStyle(
-                          fontSize: 40,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFFFF3B30),
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.secondaryDark,
                         ),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 10),
                       _StarRow(rating: r.rating),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
                     r.createdDateLabel,
                     style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
                       color: AppColors.textSub,
                     ),
                   ),
 
                   // 방문 정보
                   if (metaItems.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      metaItems,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSub,
-                      ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        r.visitTypeLabel,
+                        r.waitTimeLabel,
+                        r.visitPurposeLabel,
+                        r.visitWithLabel,
+                      ].where((s) => s.isNotEmpty).map((s) => _DetailMetaChip(label: s)).toList(),
                     ),
                   ],
 
                   // 혜택 여부
                   if (r.benefitStatusLabel.isNotEmpty) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         const Icon(Icons.verified_user_outlined,
-                            color: AppColors.primaryAccent, size: 20),
-                        const SizedBox(width: 6),
+                            color: AppColors.primaryAccent, size: 16),
+                        const SizedBox(width: 5),
                         Text(
                           r.benefitStatusLabel,
                           style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                             color: AppColors.primaryAccent,
                           ),
                         ),
@@ -215,24 +217,23 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
 
                   // 좋았던 점
                   if (r.goodPointLabels.isNotEmpty) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: r.goodPointLabels.map((label) {
                         return Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: AppColors.badge,
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: AppColors.border),
                           ),
                           child: Text(
                             label,
                             style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
                               color: AppColors.badgeText,
                             ),
                           ),
@@ -243,15 +244,15 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
 
                   // 리뷰 본문
                   if (r.content.trim().isNotEmpty) ...[
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
                     const Divider(color: AppColors.border),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     Text(
                       r.content,
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         height: 1.65,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         color: AppColors.textMain,
                       ),
                     ),
@@ -276,6 +277,30 @@ class _ReviewDetailScreenState extends State<ReviewDetailScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailMetaChip extends StatelessWidget {
+  final String label;
+  const _DetailMetaChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textSub,
         ),
       ),
     );
@@ -308,13 +333,13 @@ class _StarRow extends StatelessWidget {
       children: List.generate(5, (i) {
         final fill = (rating - i).clamp(0.0, 1.0);
         return SizedBox(
-          width: 28,
-          height: 28,
+          width: 22,
+          height: 22,
           child: Stack(children: [
-            const Icon(Icons.star, size: 28, color: Color(0xFFF0F0F0)),
+            const Icon(Icons.star_rounded, size: 22, color: Color(0xFFE8E8E8)),
             ClipRect(
               clipper: _Clip(fill),
-              child: const Icon(Icons.star, size: 28, color: Color(0xFFFFD600)),
+              child: const Icon(Icons.star_rounded, size: 22, color: Color(0xFFFFD600)),
             ),
           ]),
         );

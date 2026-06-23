@@ -1,6 +1,6 @@
-import 'dart:io';
-
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/store.dart';
@@ -131,8 +131,8 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
         .toList();
 
     final localReviewImages = _submittedReviews
-        .expand((review) => review.imagePaths)
-        .map(_StoreImageItem.file)
+        .expand((review) => review.imageFiles)
+        .map(_StoreImageItem.xfile)
         .toList();
 
     if (networkImages.isNotEmpty) {
@@ -410,13 +410,13 @@ class _TopBar extends StatelessWidget {
             onPressed: onFavoriteTap,
             icon: Icon(
               isFavorite ? Icons.star : Icons.star_border,
-              size: 34,
+              size: 26,
               color: isFavorite ? const Color(0xFFFFD600) : AppColors.textMain,
             ),
           ),
           IconButton(
             onPressed: onClose,
-            icon: const Icon(Icons.close, size: 34),
+            icon: const Icon(Icons.close, size: 24),
           ),
         ],
       ),
@@ -448,10 +448,10 @@ class _StoreSummary extends StatelessWidget {
                 store.name,
                 softWrap: true,
                 style: const TextStyle(
-                  fontSize: 30,
+                  fontSize: 22,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textMain,
-                  height: 1.15,
+                  height: 1.2,
                 ),
               ),
             ),
@@ -492,8 +492,8 @@ class _StoreSummary extends StatelessWidget {
               child: Text(
                 store.mainBenefitDescription,
                 style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.primaryAccent,
                 ),
               ),
@@ -504,27 +504,25 @@ class _StoreSummary extends StatelessWidget {
         Text(
           '현재 영업 중 · ${store.closeTimeLabel}',
           style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
             color: AppColors.textSub,
           ),
         ),
         const SizedBox(height: 8),
-        Text.rich(
-          TextSpan(
-            children: [
-              const TextSpan(text: '⭐ '),
-              TextSpan(
-                text: rating.toStringAsFixed(1),
-                style: const TextStyle(color: Color(0xFFFF3B30)),
+        Row(
+          children: [
+            const Icon(Icons.star_rounded, size: 15, color: AppColors.secondaryDark),
+            const SizedBox(width: 3),
+            Text(
+              rating.toStringAsFixed(1),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.secondaryDark,
               ),
-            ],
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textMain,
             ),
-          ),
+          ],
         ),
         const SizedBox(height: 8),
         GestureDetector(
@@ -592,7 +590,7 @@ class _PhotoCarousel extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 24),
         itemCount: images.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        separatorBuilder: (_, _) => const SizedBox(width: 14),
         itemBuilder: (context, index) {
           return GestureDetector(
             onTap: () => onImageTap(index),
@@ -641,8 +639,8 @@ class _DetailTabs extends StatelessWidget {
                     Text(
                       tabs[index],
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                         color: selected
                             ? AppColors.textMain
                             : AppColors.textSub,

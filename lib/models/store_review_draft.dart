@@ -1,3 +1,5 @@
+import 'package:image_picker/image_picker.dart';
+
 class StoreReviewDraft {
   final String verificationMethod;
   final String benefitAnswer;   // 군인만 사용, 일반 유저는 ''
@@ -105,15 +107,21 @@ class StoreReviewDraft {
 class SubmittedStoreReview {
   final StoreReviewDraft draft;
   final String content;
-  final List<String> imagePaths;
+  final List<XFile> imageFiles;
   final DateTime createdAt;
   final String nickname;
 
   const SubmittedStoreReview({
     required this.draft,
     required this.content,
-    required this.imagePaths,
+    required this.imageFiles,
     required this.createdAt,
     this.nickname = '나',
   });
+
+  bool get isMilitaryUser {
+    if (draft.benefitAnswer.isNotEmpty) return true;
+    final p = draft.purposeAnswer;
+    return p == '외출' || p == '외박' || p == '휴가';
+  }
 }

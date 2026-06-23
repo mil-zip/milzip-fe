@@ -50,8 +50,9 @@ void _openImageViewer(
 class _StoreImageItem {
   final String value;
   final _StoreImageType type;
+  final XFile? _xfile;
 
-  const _StoreImageItem._(this.value, this.type);
+  const _StoreImageItem._(this.value, this.type, {XFile? xfile}) : _xfile = xfile;
 
   factory _StoreImageItem.asset(String value) {
     return _StoreImageItem._(value, _StoreImageType.asset);
@@ -61,8 +62,8 @@ class _StoreImageItem {
     return _StoreImageItem._(value, _StoreImageType.network);
   }
 
-  factory _StoreImageItem.file(String value) {
-    return _StoreImageItem._(value, _StoreImageType.file);
+  factory _StoreImageItem.xfile(XFile file) {
+    return _StoreImageItem._('', _StoreImageType.xfile, xfile: file);
   }
 
   Widget buildImage(BoxFit fit) {
@@ -79,11 +80,12 @@ class _StoreImageItem {
           fit: fit,
           errorBuilder: (_, __, ___) => _fallbackBox(),
         );
-      case _StoreImageType.file:
-        return Image.file(
-          File(value),
-          fit: fit,
-          errorBuilder: (_, __, ___) => _fallbackBox(),
+      case _StoreImageType.xfile:
+        return FutureBuilder<Uint8List>(
+          future: _xfile!.readAsBytes(),
+          builder: (_, snap) => snap.hasData
+              ? Image.memory(snap.data!, fit: fit)
+              : _fallbackBox(),
         );
     }
   }
@@ -100,4 +102,4 @@ class _StoreImageItem {
   }
 }
 
-enum _StoreImageType { asset, network, file }
+enum _StoreImageType { asset, network, xfile }

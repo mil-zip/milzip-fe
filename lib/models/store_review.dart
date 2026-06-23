@@ -194,6 +194,13 @@ class StoreReview {
     }
   }
 
+  bool get isMilitaryUser {
+    if (benefitStatus != null && benefitStatus!.isNotEmpty) return true;
+    return visitPurpose == 'OUTING' ||
+        visitPurpose == 'OVERNIGHT_PASS' ||
+        visitPurpose == 'VACATION';
+  }
+
   List<String> get goodPointLabels {
     return goodPoints.map(goodPointLabel).toList();
   }

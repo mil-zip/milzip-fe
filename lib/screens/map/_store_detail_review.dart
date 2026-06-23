@@ -35,9 +35,7 @@ class _ReviewTabContent extends StatelessWidget {
             apiCounts: goodPointCounts,
             submittedReviews: submittedReviews,
           ),
-          const SizedBox(height: 28),
-          const Divider(color: AppColors.border),
-          const SizedBox(height: 22),
+          const SizedBox(height: 16),
           if (serverReviews.isEmpty && submittedReviews.isEmpty)
             const _EmptyReviewMessage()
           else ...[
@@ -148,15 +146,6 @@ class _ReviewSummary extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '⭐ ${rating.toStringAsFixed(1)} · $reviewCount명의 군인들이 참여했어요',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textMain,
-          ),
-        ),
-        const SizedBox(height: 18),
         ...sortedItems.where((item) => (counts[item.enumKey] ?? 0) > 0).map((
           item,
         ) {
@@ -259,12 +248,12 @@ class _ServerReviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metaItems = [
+    final metaChips = [
       review.visitTypeLabel,
       review.waitTimeLabel,
       review.visitPurposeLabel,
       review.visitWithLabel,
-    ].where((item) => item.isNotEmpty).join(' · ');
+    ].where((item) => item.isNotEmpty).toList();
 
     final reviewImages = review.imageUrls
         .where((url) => url.trim().isNotEmpty)
@@ -287,13 +276,21 @@ class _ServerReviewCard extends StatelessWidget {
               _ProfileImage(url: review.profileImageUrl),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  review.nickname,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textMain,
-                  ),
+                child: Row(
+                  children: [
+                    Text(
+                      review.nickname,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textMain,
+                      ),
+                    ),
+                    if (review.isMilitaryUser) ...[
+                      const SizedBox(width: 6),
+                      const _MilitaryBadge(),
+                    ],
+                  ],
                 ),
               ),
               if (isOwner)
@@ -373,17 +370,44 @@ class _ServerReviewCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 14),
-          Text(
-            '★${review.rating.toStringAsFixed(1)}'
-            '${review.createdDateLabel.isNotEmpty ? ' · ${review.createdDateLabel}' : ''}'
-            '${metaItems.isNotEmpty ? ' · $metaItems' : ''}',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFFFF3B30),
-            ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.star_rounded, size: 16, color: AppColors.secondaryDark),
+              const SizedBox(width: 3),
+              Text(
+                review.rating.toStringAsFixed(1),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.secondaryDark,
+                ),
+              ),
+              if (review.createdDateLabel.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                const Text(
+                  '·',
+                  style: TextStyle(color: AppColors.textSub, fontSize: 13),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  review.createdDateLabel,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSub,
+                  ),
+                ),
+              ],
+            ],
           ),
+          if (metaChips.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: metaChips.map((s) => _MetaChip(label: s)).toList(),
+            ),
+          ],
           if (review.benefitStatusLabel.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
@@ -435,7 +459,7 @@ class _SubmittedReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final draft = review.draft;
-    final reviewImages = review.imagePaths.map(_StoreImageItem.file).toList();
+    final reviewImages = review.imageFiles.map(_StoreImageItem.xfile).toList();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
@@ -448,26 +472,50 @@ class _SubmittedReviewCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            review.nickname,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textMain,
-            ),
+          Row(
+            children: [
+              Text(
+                review.nickname,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMain,
+                ),
+              ),
+              if (review.isMilitaryUser) ...[
+                const SizedBox(width: 6),
+                const _MilitaryBadge(),
+              ],
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            '★${draft.rating.toStringAsFixed(1)} · '
-            '${draft.waitTimeAnswer} · '
-            '${draft.purposeAnswer} · '
-            '${draft.companionAnswer}',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFFFF3B30),
-            ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.star_rounded, size: 16, color: AppColors.secondaryDark),
+              const SizedBox(width: 3),
+              Text(
+                draft.rating.toStringAsFixed(1),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.secondaryDark,
+                ),
+              ),
+            ],
           ),
+          ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                draft.visitTypeAnswer,
+                draft.waitTimeAnswer,
+                draft.purposeAnswer,
+                draft.companionAnswer,
+              ].where((s) => s.isNotEmpty).map((s) => _MetaChip(label: s)).toList(),
+            ),
+          ],
           if (draft.benefitSentence.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
@@ -521,7 +569,7 @@ class _ReviewImageStrip extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: images.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           return GestureDetector(
             onTap: () => _openImageViewer(context, images, index),
@@ -582,6 +630,62 @@ class _ProfileImage extends StatelessWidget {
       radius: 18,
       backgroundColor: const Color(0xFFD9D9D9),
       backgroundImage: NetworkImage(imageUrl),
+    );
+  }
+}
+
+class _MilitaryBadge extends StatelessWidget {
+  const _MilitaryBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.secondaryBg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.secondary, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Text('🪖', style: TextStyle(fontSize: 11)),
+          SizedBox(width: 3),
+          Text(
+            '군인',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.secondaryDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  final String label;
+
+  const _MetaChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textSub,
+        ),
+      ),
     );
   }
 }
